@@ -7,7 +7,7 @@
     "build": "next build && cp -R node_modules/cesium/Build/Cesium public/cesium",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "symlink-dir node_modules/cesium/Build/Cesium public/cesium"
+    "postinstall": "mkdir -p public/cesium && cp -R node_modules/cesium/Build/Cesium/* public/cesium/"
   },
   "dependencies": {
     "cesium": "^1.138.0",
