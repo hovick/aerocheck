@@ -252,7 +252,7 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
 
     if (obsList.length === 0) return alert("No valid obstacles found. Use ID, Lat, Lon, Alt format.");
 
-    const res = await fetch("http://127.0.0.1:8000/analyze-batch", {
+    const res = await fetch("${API_BASE}/analyze-batch", {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ surface_id: selectedSurfaceId, obstacles: obsList }),
@@ -333,7 +333,7 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
     
     setIsSearching(true);
     const endpoint = family === "NAVAID" ? "navaids" : "airports";
-    const res = await fetch(`http://127.0.0.1:8000/search/${endpoint}?q=${query}`);
+    const res = await fetch(`${API_BASE}/search/${endpoint}?q=${query}`);
     const data = await res.json();
     setSearchResults(data);
     setIsSearching(false);
@@ -435,7 +435,7 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
       setPubSurfResults([]);
       return;
     }
-    const res = await fetch(`http://127.0.0.1:8000/search/public-surfaces?q=${query}`);
+    const res = await fetch(`${API_BASE}/search/public-surfaces?q=${query}`);
     const data = await res.json();
     setPubSurfResults(data);
   };
@@ -922,7 +922,7 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
               onClick={async () => {
                 if (!selectedSurfaceId) return alert("Please select a surface first!");
                 
-                const res = await fetch("http://127.0.0.1:8000/analyze", {
+                const res = await fetch("${API_BASE}/analyze", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
