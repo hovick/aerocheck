@@ -470,6 +470,21 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
     const doc = new jsPDF();
     const date = new Date().toLocaleString();
 
+    let textStartX = 14; // Default text position
+
+    // --- NEW: DYNAMIC LOGO INJECTION ---
+    if (analysisResult.authority_logo) {
+      try {
+        // If the premium user has a logo, draw it and shift the header text to the right
+        // We assume the DB string includes the "data:image/png;base64,..." prefix
+        const imageType = analysisResult.authority_logo.includes("jpeg") || analysisResult.authority_logo.includes("jpg") ? "JPEG" : "PNG";
+        doc.addImage(analysisResult.authority_logo, imageType, 14, 10, 40, 15);
+        textStartX = 60; // Push text to the right so it doesn't overlap the logo
+      } catch (err) {
+        console.warn("Failed to load Authority Logo into PDF", err);
+      }
+    }
+
     // 1. Header
     doc.setFontSize(18);
     doc.setTextColor(0, 51, 102); // Navy Blue
