@@ -835,7 +835,7 @@ const handleDownloadLogs = async () => {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {/* --- PREMIUM OPEN SOURCE SEARCH --- */}
               <div style={{ backgroundColor: "#e8f0fe", padding: "10px", borderRadius: "4px", border: "1px solid #cce5ff", opacity: user?.is_premium ? 1 : 0.6, position: "relative" }}>
-                <label style={{...labelStyle, color: "#1a73e8", display: "block", marginBottom: "5px"}}>
+                <label style={{...labelStyle, color: "#0b1b3d", display: "block", marginBottom: "5px"}}>
                   ★ Premium Database Search 
                 </label>
                 
@@ -873,7 +873,7 @@ const handleDownloadLogs = async () => {
                               <button 
                                 key={rIdx} 
                                 onClick={() => handleSelectRunway(apt, rwy)}
-                                style={{ padding: "2px 6px", fontSize: "10px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "3px", cursor: "pointer" }}
+                                style={{ padding: "2px 6px", fontSize: "10px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "3px", cursor: "pointer" }}
                               >
                                 RWY {rwy.le_ident}/{rwy.he_ident}
                               </button>
@@ -1036,7 +1036,7 @@ const handleDownloadLogs = async () => {
               
               {/* 1. PUBLIC PREMIUM SURFACES SEARCH */}
               <div style={{ backgroundColor: "#f8f9fa", padding: "10px", borderRadius: "4px", border: "1px solid #ddd", position: "relative" }}>
-                <label style={{...labelStyle, color: "#1a73e8", display: "block", marginBottom: "5px"}}>
+                <label style={{...labelStyle, color: "#0b1b3d", display: "block", marginBottom: "5px"}}>
                   Search Verified Surfaces (CAA surfaces)
                 </label>
                 <input 
@@ -1114,7 +1114,7 @@ const handleDownloadLogs = async () => {
               </div>
 
               <button 
-                style={{ ...createBtnStyle, backgroundColor: "#28a745" }}
+                style={{ ...createBtnStyle, backgroundColor: "#0b1b3d" }}
                 onClick={async () => {
                   if (!selectedAnalysisAirport) return alert("Please select an airport first!");
                   
@@ -1174,7 +1174,7 @@ const handleDownloadLogs = async () => {
 
               {/* --- PREMIUM: BATCH OBSTACLE UPLOAD --- */}
               <div style={{ backgroundColor: "#e8f0fe", padding: "10px", borderRadius: "4px", marginTop: "15px", border: "1px solid #cce5ff", opacity: user?.is_premium ? 1 : 0.6 }}>
-                <label style={{...labelStyle, color: "#1a73e8", display: "block", marginBottom: "8px"}}>
+                <label style={{...labelStyle, color: "#0b1b3d", display: "block", marginBottom: "8px"}}>
                   ★ Premium Feature: Batch Obstacle Analysis (1000 max)
                 </label>
                 
@@ -1188,7 +1188,7 @@ const handleDownloadLogs = async () => {
                 
                 <div style={{ ...rowStyle, marginTop: "10px" }}>
                   <button 
-                    style={{ ...activeTabBtn, backgroundColor: user?.is_premium ? "#1a73e8" : "#ccc", fontSize: "12px" }}
+                    style={{ ...activeTabBtn, backgroundColor: user?.is_premium ? "#0b1b3d" : "#ccc", fontSize: "12px" }}
                     disabled={!user?.is_premium}
                     onClick={handleBatchAnalyze}
                   >
@@ -1196,7 +1196,7 @@ const handleDownloadLogs = async () => {
                   </button>
                   
                   <button 
-                    style={{ ...activeTabBtn, backgroundColor: user?.is_premium && batchResults.length > 0 ? "#28a745" : "#ccc", fontSize: "12px" }}
+                    style={{ ...activeTabBtn, backgroundColor: user?.is_premium && batchResults.length > 0 ? "#0b1b3d" : "#ccc", fontSize: "12px" }}
                     disabled={!user?.is_premium || batchResults.length === 0}
                     onClick={downloadBatchCSV}
                   >
@@ -1220,7 +1220,7 @@ const handleDownloadLogs = async () => {
                   
                   <div style={rowStyle}>
                     <button 
-                      style={{ ...activeTabBtn, backgroundColor: user?.is_premium ? "#4285F4" : "#ccc", fontSize: "12px" }}
+                      style={{ ...activeTabBtn, backgroundColor: user?.is_premium ? "#0b1b3d" : "#ccc", fontSize: "12px" }}
                       disabled={!user?.is_premium}
                       onClick={() => handleExport('kml')}
                     >
@@ -1228,7 +1228,7 @@ const handleDownloadLogs = async () => {
                     </button>
                     
                     <button 
-                      style={{ ...activeTabBtn, backgroundColor: user?.is_premium ? "#d93025" : "#ccc", fontSize: "12px" }}
+                      style={{ ...activeTabBtn, backgroundColor: user?.is_premium ? "#0b1b3d" : "#ccc", fontSize: "12px" }}
                       disabled={!user?.is_premium}
                       onClick={() => handleExport('dxf')}
                     >
@@ -1258,7 +1258,7 @@ const handleDownloadLogs = async () => {
                   My Saved Airspaces
                 </label>
                 
-                <span style={{ fontSize: "12px", fontWeight: "bold", color: user?.is_premium ? "#28a745" : "#666" }}>
+                <span style={{ fontSize: "12px", fontWeight: "bold", color: user?.is_premium ? "#0b1b3d" : "#666" }}>
                   Storage: {uniqueAirportsCount} / {maxAirports} Airports
                 </span>
               </div>
@@ -1290,13 +1290,13 @@ const handleDownloadLogs = async () => {
                       
                       <div style={rowStyle}>
                         <button 
-                          style={{...activeTabBtn, backgroundColor: "#007bff", fontSize: "11px", padding: "6px"}} 
+                          style={{...activeTabBtn, backgroundColor: "#0053ac", fontSize: "11px", padding: "6px"}} 
                           onClick={() => handleDrawSurface(s)}
                         >
                           🗺️ Draw on Map
                         </button>
                         <button 
-                          style={{...activeTabBtn, backgroundColor: "#dc3545", flex: 0.4, fontSize: "11px", padding: "6px"}} 
+                          style={{...activeTabBtn, backgroundColor: "#ae2936", flex: 0.4, fontSize: "11px", padding: "6px"}} 
                           onClick={() => handleDeleteSurface(s.id)}
                         >
                           🗑️ Delete
@@ -1320,7 +1320,7 @@ const handleDownloadLogs = async () => {
               {user?.is_premium && (
                 <div style={{ backgroundColor: "#e8f0fe", padding: "15px", borderRadius: "6px", border: "1px solid #cce5ff", marginTop: "20px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
-                    <label style={{...labelStyle, margin: 0, color: "#1a73e8"}}>🗄️ Official Authorization Logs</label>
+                    <label style={{...labelStyle, margin: 0, color: "#0b1b3d"}}>🗄️ Official Authorization Logs</label>
                   </div>
                   
                   <p style={{ fontSize: "11px", color: "#555", margin: "0 0 10px 0" }}>
@@ -1349,7 +1349,7 @@ const handleDownloadLogs = async () => {
                     <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
                     <button 
                       onClick={handleDownloadLogs} 
-                      style={{ ...activeTabBtn, backgroundColor: "#28a745", padding: "6px 12px", fontSize: "12px", height: "31px", flex: "0 1 auto" }}
+                      style={{ ...activeTabBtn, backgroundColor: "#176429", padding: "6px 12px", fontSize: "12px", height: "31px", flex: "0 1 auto" }}
                     >
                       📥 Download CSV
                     </button>
@@ -1380,7 +1380,7 @@ const handleDownloadLogs = async () => {
             <label style={{ fontSize: "12px", fontWeight: "bold", color: "#333", margin: 0 }}>
               3D Exaggeration
             </label>
-            <span style={{ fontSize: "12px", color: "#007bff", fontWeight: "bold" }}>
+            <span style={{ fontSize: "12px", color: "#0b1b3d", fontWeight: "bold" }}>
               {exaggeration}x
             </span>
           </div>
@@ -1411,10 +1411,10 @@ const handleDownloadLogs = async () => {
               <input style={{...inputStyle, padding: "6px"}} value={loginInput} onChange={e => setLoginInput(e.target.value)} placeholder="Username" />
               <input type="password" style={{...inputStyle, padding: "6px"}} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Password" />
 
-              <button style={{...activeTabBtn, padding: "8px", backgroundColor: isRegistering ? "#28a745" : "#007bff"}} onClick={handleAuth}>
+              <button style={{...activeTabBtn, padding: "8px", backgroundColor: isRegistering ? "#0b1b3d" : "#0b1b3d"}} onClick={handleAuth}>
                 {isRegistering ? "Sign Up" : "Log In"}
               </button>
-              <button style={{ backgroundColor: "transparent", border: "none", color: "#007bff", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} onClick={() => setIsRegistering(!isRegistering)}>
+              <button style={{ backgroundColor: "transparent", border: "none", color: "#0b1b3d", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} onClick={() => setIsRegistering(!isRegistering)}>
                 {isRegistering ? "Already have an account? Log in." : "Create an account"}
               </button>
             </div>
@@ -1446,7 +1446,7 @@ const handleDownloadLogs = async () => {
                       <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
                       <button 
                         onClick={handleUpdateProfile} 
-                        style={{...activeTabBtn, backgroundColor: "#28a745", padding: "8px", fontSize: "12px", marginTop: "5px"}}
+                        style={{...activeTabBtn, backgroundColor: "#0b1b3d", padding: "8px", fontSize: "12px", marginTop: "5px"}}
                       >
                         Save Changes
                       </button>
