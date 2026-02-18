@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && cp -R node_modules/cesium/Build/Cesium public/cesium",
+    "build": "mkdir -p public/cesium && cp -R node_modules/cesium/Build/Cesium/* public/cesium/ && next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "mkdir -p public/cesium && cp -R node_modules/cesium/Build/Cesium/* public/cesium/"
+    "lint": "next lint"
   },
   "dependencies": {
     "cesium": "^1.138.0",
