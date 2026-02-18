@@ -799,117 +799,12 @@ const handleDownloadLogs = async () => {
           {isSidebarOpen ? "◀" : "▶"}
       </button>
 
-      {/* --- SLIDING SIDEBAR CONTAINER --- */}
-      <div style={{ 
-          ...sidebarStyle, 
-          left: isSidebarOpen ? "20px" : "-400px", // Slides off-screen when hidden!
-          transition: "left 0.3s ease-in-out" 
-      }}>
-
-        
-        {/* --- EXAGGERATION WIDGET --- */}
-        <div style={{
-          position: "absolute",
-          bottom: "30px",
-          right: "30px", // Puts it in the bottom right corner of the map
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          padding: "10px 15px",
-          borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          zIndex: 10,
-          display: "flex",
-          flexDirection: "column",
-          gap: "5px",
-          width: "200px"
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label style={{ fontSize: "12px", fontWeight: "bold", color: "#333", margin: 0 }}>
-              3D Exaggeration
-            </label>
-            <span style={{ fontSize: "12px", color: "#007bff", fontWeight: "bold" }}>
-              {exaggeration}x
-            </span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            step="0.5"
-            value={exaggeration}
-            onChange={(e) => setExaggeration(parseFloat(e.target.value))}
-            style={{ width: "100%", cursor: "pointer" }}
-          />
-        </div>
-        {/* --------------------------- */}
-
-        {/* --- ACCOUNT / LOGIN PANEL (Floating Box) --- */}
-        <div style={{ position: "absolute", top: "20px", right: "20px", width: "300px", backgroundColor: "rgba(255, 255, 255, 0.95)", padding: "15px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", border: "1px solid #ddd", zIndex: 10 }}>
-          {!user ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <strong style={{ fontSize: "14px", color: "#333" }}>{isRegistering ? "Register Account" : "Guest Mode"}</strong>
-                {!isRegistering && <span style={{ fontSize: "10px", backgroundColor: "#e2e3e5", padding: "2px 6px", borderRadius: "4px" }}>Free</span>}
-              </div>
-              
-              {!isRegistering && <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Create 1 surface as a guest, or log in.</p>}
-              <hr style={{ margin: "5px 0", borderTop: "1px solid #ddd" }} />
-              
-              <input style={{...inputStyle, padding: "6px"}} value={loginInput} onChange={e => setLoginInput(e.target.value)} placeholder="Username" />
-              <input type="password" style={{...inputStyle, padding: "6px"}} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Password" />
-
-              <button style={{...activeTabBtn, padding: "8px", backgroundColor: isRegistering ? "#28a745" : "#007bff"}} onClick={handleAuth}>
-                {isRegistering ? "Sign Up" : "Log In"}
-              </button>
-              <button style={{ backgroundColor: "transparent", border: "none", color: "#007bff", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} onClick={() => setIsRegistering(!isRegistering)}>
-                {isRegistering ? "Already have an account? Log in." : "Create an account"}
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "14px" }}>
-                👤 {user.username} {user.is_premium && <span style={{ color: "gold", textShadow: "0 0 2px rgba(0,0,0,0.2)" }}>★ Premium</span>}
-              </span>
-              <button onClick={handleLogout} style={{ fontSize: "12px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#f8f9fa", border: "1px solid #ddd", borderRadius: "4px" }}>Logout</button>
-            </div>
-          )}
-          {/* --- PROFILE SETTINGS PANEL --- */}
-              {user && (
-                <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "6px", border: "1px solid #ddd", marginTop: "20px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                    <label style={{...labelStyle, margin: 0, color: "#333"}}>⚙️ Account Settings</label>
-                    <button 
-                      onClick={() => setIsEditingProfile(!isEditingProfile)} 
-                      style={{ fontSize: "11px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
-                    >
-                      {isEditingProfile ? "Cancel" : "Edit Profile"}
-                    </button>
-                  </div>
-
-                  {isEditingProfile ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                      <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="New Username" />
-                      <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email Address (e.g. caa@gov.uk)" />
-                      <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
-                      <button 
-                        onClick={handleUpdateProfile} 
-                        style={{...activeTabBtn, backgroundColor: "#28a745", padding: "8px", fontSize: "12px", marginTop: "5px"}}
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: "12px", color: "#555" }}>
-                      <p style={{ margin: "0 0 5px 0" }}><strong>Username:</strong> {user.username}</p>
-                      <p style={{ margin: "0 0 5px 0" }}><strong>Email:</strong> {user.email || <span style={{color: "#999"}}>Not provided</span>}</p>
-                      <p style={{ margin: "0" }}><strong>Account Type:</strong> {user.is_premium ? "Premium Authority" : "Free User"}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-        </div>
-
         {/* SINGLE INTERACTIVE SIDEBAR */}
-        <div style={sidebarStyle}>
+        <div style={{ 
+            ...sidebarStyle, 
+            left: isSidebarOpen ? "20px" : "-400px", 
+            transition: "left 0.3s ease-in-out" 
+        }}>
           {/* VISUALIZATION TOGGLES */}
           <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "15px" }}>
             <label style={{ fontSize: "12px", display: "flex", gap: "5px", alignItems: "center" }}>
@@ -1465,7 +1360,107 @@ const handleDownloadLogs = async () => {
             </div>
           );})()}
         </div>
-      </div>
+
+        {/* --- EXAGGERATION WIDGET --- */}
+        <div style={{
+          position: "absolute",
+          bottom: "30px",
+          right: "30px", // Puts it in the bottom right corner of the map
+          backgroundColor: "rgba(255, 255, 255, 0.9)",
+          padding: "10px 15px",
+          borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          zIndex: 10,
+          display: "flex",
+          flexDirection: "column",
+          gap: "5px",
+          width: "200px"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label style={{ fontSize: "12px", fontWeight: "bold", color: "#333", margin: 0 }}>
+              3D Exaggeration
+            </label>
+            <span style={{ fontSize: "12px", color: "#007bff", fontWeight: "bold" }}>
+              {exaggeration}x
+            </span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            step="0.5"
+            value={exaggeration}
+            onChange={(e) => setExaggeration(parseFloat(e.target.value))}
+            style={{ width: "100%", cursor: "pointer" }}
+          />
+        </div>
+        {/* --------------------------- */}
+
+        {/* --- ACCOUNT / LOGIN PANEL (Floating Box) --- */}
+        <div style={{ position: "absolute", top: "20px", right: "20px", width: "300px", backgroundColor: "rgba(255, 255, 255, 0.95)", padding: "15px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", border: "1px solid #ddd", zIndex: 10 }}>
+          {!user ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <strong style={{ fontSize: "14px", color: "#333" }}>{isRegistering ? "Register Account" : "Guest Mode"}</strong>
+                {!isRegistering && <span style={{ fontSize: "10px", backgroundColor: "#e2e3e5", padding: "2px 6px", borderRadius: "4px" }}>Free</span>}
+              </div>
+              
+              {!isRegistering && <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Create 1 surface as a guest, or log in.</p>}
+              <hr style={{ margin: "5px 0", borderTop: "1px solid #ddd" }} />
+              
+              <input style={{...inputStyle, padding: "6px"}} value={loginInput} onChange={e => setLoginInput(e.target.value)} placeholder="Username" />
+              <input type="password" style={{...inputStyle, padding: "6px"}} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Password" />
+
+              <button style={{...activeTabBtn, padding: "8px", backgroundColor: isRegistering ? "#28a745" : "#007bff"}} onClick={handleAuth}>
+                {isRegistering ? "Sign Up" : "Log In"}
+              </button>
+              <button style={{ backgroundColor: "transparent", border: "none", color: "#007bff", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} onClick={() => setIsRegistering(!isRegistering)}>
+                {isRegistering ? "Already have an account? Log in." : "Create an account"}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "14px" }}>
+                👤 {user.username} {user.is_premium && <span style={{ color: "gold", textShadow: "0 0 2px rgba(0,0,0,0.2)" }}>★ Premium</span>}
+              </span>
+              <button onClick={handleLogout} style={{ fontSize: "12px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#f8f9fa", border: "1px solid #ddd", borderRadius: "4px" }}>Logout</button>
+            </div>
+          )}
+          {/* --- PROFILE SETTINGS PANEL --- */}
+              {user && (
+                <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "6px", border: "1px solid #ddd", marginTop: "20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                    <label style={{...labelStyle, margin: 0, color: "#333"}}>⚙️ Account Settings</label>
+                    <button 
+                      onClick={() => setIsEditingProfile(!isEditingProfile)} 
+                      style={{ fontSize: "11px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
+                    >
+                      {isEditingProfile ? "Cancel" : "Edit Profile"}
+                    </button>
+                  </div>
+
+                  {isEditingProfile ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="New Username" />
+                      <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email Address (e.g. caa@gov.uk)" />
+                      <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
+                      <button 
+                        onClick={handleUpdateProfile} 
+                        style={{...activeTabBtn, backgroundColor: "#28a745", padding: "8px", fontSize: "12px", marginTop: "5px"}}
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: "12px", color: "#555" }}>
+                      <p style={{ margin: "0 0 5px 0" }}><strong>Username:</strong> {user.username}</p>
+                      <p style={{ margin: "0 0 5px 0" }}><strong>Email:</strong> {user.email || <span style={{color: "#999"}}>Not provided</span>}</p>
+                      <p style={{ margin: "0" }}><strong>Account Type:</strong> {user.is_premium ? "Premium Authority" : "Free User"}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+        </div>
     </main>
   );
 }
