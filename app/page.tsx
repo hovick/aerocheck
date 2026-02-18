@@ -8,7 +8,12 @@ import autoTable from "jspdf-autotable";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export default function Home() {
-const [user, setUser] = useState<{id: number, username: string, is_premium: boolean} | null>(null);
+  const [user, setUser] = useState<{id: number, username: string, email?: string, is_premium: boolean} | null>(null);
+  // --- Profile Settings State ---
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [loginInput, setLoginInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
@@ -126,6 +131,26 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
     viewerRef.current?.entities.removeAll();
   };
 
+  const handleUpdateProfile = async () => {
+    const res = await fetch(`${API_BASE}/users/me`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        username: editUsername || null,
+        email: editEmail || null,
+        password: editPassword || null
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) return alert(`Update Error: ${data.detail}`);
+    
+    // Save the brand new token so they don't get logged out
+    localStorage.setItem("aero_token", data.access_token);
+    alert("Profile updated successfully!");
+    window.location.reload();
+  };
+
   useEffect(() => {
     setMounted(true);
     if (typeof window !== "undefined") {
@@ -149,6 +174,8 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
         .then(data => {
           if (data) {
             setUser(data);
+            setEditUsername(data.username || "");
+            setEditEmail(data.email || "");
             fetch(`${API_BASE}/get-surfaces`, { headers: { "Authorization": `Bearer ${token}` } })
               .then(r => r.json()).then(surfs => setSavedSurfaces(surfs));
           } else {
@@ -1168,6 +1195,41 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
                 Storage: {savedSurfaces.length} / {user?.is_premium ? 10 : 1}
               </span>
             </div>
+
+            {/* --- PROFILE SETTINGS PANEL --- */}
+            {user && (
+              <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "6px", border: "1px solid #ddd", marginTop: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <label style={{...labelStyle, margin: 0, color: "#333"}}>⚙️ Account Settings</label>
+                  <button 
+                    onClick={() => setIsEditingProfile(!isEditingProfile)} 
+                    style={{ fontSize: "11px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
+                  >
+                    {isEditingProfile ? "Cancel" : "Edit Profile"}
+                  </button>
+                </div>
+
+                {isEditingProfile ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="New Username" />
+                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email Address (e.g. caa@gov.uk)" />
+                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
+                    <button 
+                      onClick={handleUpdateProfile} 
+                      style={{...activeTabBtn, backgroundColor: "#28a745", padding: "8px", fontSize: "12px", marginTop: "5px"}}
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: "12px", color: "#555" }}>
+                    <p style={{ margin: "0 0 5px 0" }}><strong>Username:</strong> {user.username}</p>
+                    <p style={{ margin: "0 0 5px 0" }}><strong>Email:</strong> {user.email || <span style={{color: "#999"}}>Not provided</span>}</p>
+                    <p style={{ margin: "0" }}><strong>Account Type:</strong> {user.is_premium ? "Premium Authority" : "Free User"}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {!user ? (
               <p style={{ fontSize: "12px", color: "#dc3545", backgroundColor: "#f8d7da", padding: "10px", borderRadius: "4px" }}>
