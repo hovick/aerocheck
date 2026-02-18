@@ -8,6 +8,15 @@ import autoTable from "jspdf-autotable";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export default function Home() {
+  // --- STYLES ---
+  const sidebarStyle: React.CSSProperties = { position: "absolute", top: "20px", left: "20px", width: "350px", padding: "20px", backgroundColor: "rgba(255,255,255,0.95)", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflowY: "auto", zIndex: 10 };
+  const rowStyle: React.CSSProperties = { display: "flex", gap: "8px" };
+  const numInputStyle: React.CSSProperties = { flex: 1, minWidth: 0, padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "12px" };
+  const inputStyle: React.CSSProperties = { padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "14px", width: "100%" };
+  const labelStyle: React.CSSProperties = { fontSize: "12px", fontWeight: "bold", color: "#444", marginTop: "5px" };
+  const activeTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
+  const inactiveTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#ddd", color: "#555", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
+  const createBtnStyle: React.CSSProperties = { marginTop: "15px", padding: "12px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "15px" };
   const [user, setUser] = useState<{id: number, username: string, email?: string, is_premium: boolean, tier?: string} | null>(null);
   // --- Profile Settings State ---
   const [logStartDate, setLogStartDate] = useState("");
@@ -1464,13 +1473,3 @@ const handleDownloadLogs = async () => {
     </main>
   );
 }
-
-// --- STYLES ---
-const sidebarStyle: React.CSSProperties = { position: "absolute", top: "20px", left: "20px", width: "350px", padding: "20px", backgroundColor: "rgba(255,255,255,0.95)", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflowY: "auto", zIndex: 10 };
-const rowStyle: React.CSSProperties = { display: "flex", gap: "8px" };
-const numInputStyle: React.CSSProperties = { flex: 1, minWidth: 0, padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "12px" };
-const inputStyle: React.CSSProperties = { padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "14px", width: "100%" };
-const labelStyle: React.CSSProperties = { fontSize: "12px", fontWeight: "bold", color: "#444", marginTop: "5px" };
-const activeTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
-const inactiveTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#ddd", color: "#555", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
-const createBtnStyle: React.CSSProperties = { marginTop: "15px", padding: "12px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "15px" };
