@@ -470,58 +470,78 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
     const doc = new jsPDF();
     const date = new Date().toLocaleString();
 
-    let textStartX = 14; // Default text position
+    let currentY = 20; // This tracks where we are on the page vertically
 
-    // --- NEW: DYNAMIC LOGO INJECTION ---
+    // --- 1. DYNAMIC LOGO INJECTION ---
     if (analysisResult.authority_logo) {
       try {
-        // If the premium user has a logo, draw it and shift the header text to the right
-        // We assume the DB string includes the "data:image/png;base64,..." prefix
+        // Create an invisible image element to read its true, unsquished dimensions
+        const img = new window.Image();
+        img.src = analysisResult.authority_logo;
+
+        // Default dimensions just in case
+        let imgWidth = 20; 
+        let imgHeight = 20; 
+
+        // If the browser successfully reads the image shape, calculate the perfect aspect ratio
+        if (img.width && img.height) {
+          imgHeight = 20; // We lock the height to 20mm
+          imgWidth = imgHeight * (img.width / img.height); // Dynamically scale the width!
+        }
+
         const imageType = analysisResult.authority_logo.includes("jpeg") || analysisResult.authority_logo.includes("jpg") ? "JPEG" : "PNG";
-        doc.addImage(analysisResult.authority_logo, imageType, 14, 10, 40, 15);
-        textStartX = 60; // Push text to the right so it doesn't overlap the logo
+        
+        doc.addImage(analysisResult.authority_logo, imageType, 14, 10, imgWidth, imgHeight);
+
+        // Push the title down below the logo!
+        currentY = 40; 
       } catch (err) {
         console.warn("Failed to load Authority Logo into PDF", err);
       }
     }
 
-    // 1. Header
-    doc.setFontSize(18);
+    // --- 2. REPORT HEADER ---
+    doc.setFontSize(16);
     doc.setTextColor(0, 51, 102); // Navy Blue
-    doc.text("AERONAUTICAL OBSTACLE EVALUATION REPORT", 105, 20, { align: "center" });
+    // The text is back to being perfectly centered, but pushed down if a logo exists
+    doc.text("AERONAUTICAL OBSTACLE EVALUATION REPORT", 105, currentY, { align: "center" });
     
     doc.setLineWidth(0.5);
-    doc.line(14, 25, 196, 25); // Horizontal line
+    doc.line(14, currentY + 5, 196, currentY + 5);
 
-    // 2. Metadata Section
+    // --- 3. METADATA SECTION ---
+    currentY += 15;
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Date of Analysis: ${date}`, 14, 35);
-    doc.text(`Authority / Defined By: ${analysisResult.authority_name}`, 14, 42);
-    doc.text(`Evaluated Airspace: ${analysisResult.surface_name}`, 14, 49);
+    doc.text(`Date of Analysis: ${date}`, 14, currentY);
+    doc.text(`Authority / Defined By: ${analysisResult.authority_name}`, 14, currentY + 7);
+    doc.text(`Evaluated Airspace: ${analysisResult.surface_name}`, 14, currentY + 14);
 
-    // 3. Obstacle Details
-    doc.setFont("helvetica", "bold"); // FIXED: Explicitly string typed
-    doc.text("Obstacle Details:", 14, 60);
-    doc.setFont("helvetica", "normal"); // FIXED
-    doc.text(`Latitude:  ${obsPos.lat}°`, 20, 67);
-    doc.text(`Longitude: ${obsPos.lon}°`, 20, 74);
-    doc.text(`Proposed Height: ${analysisResult.obstacle_alt} m`, 20, 81);
+    // --- 4. OBSTACLE DETAILS ---
+    currentY += 25;
+    doc.setFont("helvetica", "bold");
+    doc.text("Obstacle Details:", 14, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Latitude:  ${obsPos.lat}°`, 20, currentY + 7);
+    doc.text(`Longitude: ${obsPos.lon}°`, 20, currentY + 14);
+    doc.text(`Proposed Height: ${analysisResult.obstacle_alt} m`, 20, currentY + 21);
 
-    // 4. Official Determination (Green or Red)
+    // --- 5. OFFICIAL DETERMINATION ---
+    currentY += 35;
     doc.setFontSize(14);
-    doc.setFont("helvetica", "bold"); // FIXED
+    doc.setFont("helvetica", "bold");
     if (analysisResult.penetration) {
       doc.setTextColor(200, 0, 0); // Red
-      doc.text(`DETERMINATION: DENIED (PENETRATES SURFACES)`, 14, 95);
+      doc.text(`DETERMINATION: DENIED (PENETRATES SURFACES)`, 14, currentY);
     } else {
       doc.setTextColor(0, 150, 0); // Green
-      doc.text(`DETERMINATION: ALLOWED (CLEAR OF SURFACES)`, 14, 95);
+      doc.text(`DETERMINATION: ALLOWED (CLEAR OF SURFACES)`, 14, currentY);
     }
 
-    // 5. Analysis Breakdown Table
+    // --- 6. ANALYSIS BREAKDOWN TABLE ---
+    currentY += 10;
     autoTable(doc, {
-      startY: 105,
+      startY: currentY,
       headStyles: { fillColor: [0, 51, 102] },
       head: [['Evaluated Surface', 'Allowed Max Height (m)', 'Margin to Obstacle (m)']],
       body: analysisResult.all_surfaces.map((s: any) => [
@@ -531,14 +551,14 @@ const [user, setUser] = useState<{id: number, username: string, is_premium: bool
       ]),
     });
 
-    // 6. Footer Disclaimer
+    // --- 7. FOOTER DISCLAIMER ---
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     doc.setFontSize(9);
-    doc.setFont("helvetica", "normal"); // FIXED
+    doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
     doc.text("This document is an automated analysis report. Please verify with local Civil Aviation Authorities.", 105, pageHeight - 10, { align: "center" });
 
-    // 7. Save the PDF
+    // --- 8. TRIGGER DOWNLOAD ---
     doc.save(`AeroCheck_Report_${Date.now()}.pdf`);
   };
 
