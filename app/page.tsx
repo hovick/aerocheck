@@ -755,11 +755,45 @@ export default function Home() {
         ) : (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "14px" }}>
-              👤 {user.username} {user.is_premium && <span style={{ color: "gold", textShadow: "0 0 2px rgba(0,0,0,0.2)" }}>★ PRO</span>}
+              👤 {user.username} {user.is_premium && <span style={{ color: "gold", textShadow: "0 0 2px rgba(0,0,0,0.2)" }}>★ Premium</span>}
             </span>
             <button onClick={handleLogout} style={{ fontSize: "12px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#f8f9fa", border: "1px solid #ddd", borderRadius: "4px" }}>Logout</button>
           </div>
         )}
+        {/* --- PROFILE SETTINGS PANEL --- */}
+            {user && (
+              <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "6px", border: "1px solid #ddd", marginTop: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <label style={{...labelStyle, margin: 0, color: "#333"}}>⚙️ Account Settings</label>
+                  <button 
+                    onClick={() => setIsEditingProfile(!isEditingProfile)} 
+                    style={{ fontSize: "11px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
+                  >
+                    {isEditingProfile ? "Cancel" : "Edit Profile"}
+                  </button>
+                </div>
+
+                {isEditingProfile ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="New Username" />
+                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email Address (e.g. caa@gov.uk)" />
+                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
+                    <button 
+                      onClick={handleUpdateProfile} 
+                      style={{...activeTabBtn, backgroundColor: "#28a745", padding: "8px", fontSize: "12px", marginTop: "5px"}}
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: "12px", color: "#555" }}>
+                    <p style={{ margin: "0 0 5px 0" }}><strong>Username:</strong> {user.username}</p>
+                    <p style={{ margin: "0 0 5px 0" }}><strong>Email:</strong> {user.email || <span style={{color: "#999"}}>Not provided</span>}</p>
+                    <p style={{ margin: "0" }}><strong>Account Type:</strong> {user.is_premium ? "Premium Authority" : "Free User"}</p>
+                  </div>
+                )}
+              </div>
+            )}
       </div>
 
       {/* SINGLE INTERACTIVE SIDEBAR */}
@@ -1195,41 +1229,6 @@ export default function Home() {
                 Storage: {savedSurfaces.length} / {user?.is_premium ? 10 : 1}
               </span>
             </div>
-
-            {/* --- PROFILE SETTINGS PANEL --- */}
-            {user && (
-              <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "6px", border: "1px solid #ddd", marginTop: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <label style={{...labelStyle, margin: 0, color: "#333"}}>⚙️ Account Settings</label>
-                  <button 
-                    onClick={() => setIsEditingProfile(!isEditingProfile)} 
-                    style={{ fontSize: "11px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
-                  >
-                    {isEditingProfile ? "Cancel" : "Edit Profile"}
-                  </button>
-                </div>
-
-                {isEditingProfile ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="New Username" />
-                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email Address (e.g. caa@gov.uk)" />
-                    <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
-                    <button 
-                      onClick={handleUpdateProfile} 
-                      style={{...activeTabBtn, backgroundColor: "#28a745", padding: "8px", fontSize: "12px", marginTop: "5px"}}
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: "12px", color: "#555" }}>
-                    <p style={{ margin: "0 0 5px 0" }}><strong>Username:</strong> {user.username}</p>
-                    <p style={{ margin: "0 0 5px 0" }}><strong>Email:</strong> {user.email || <span style={{color: "#999"}}>Not provided</span>}</p>
-                    <p style={{ margin: "0" }}><strong>Account Type:</strong> {user.is_premium ? "Premium Authority" : "Free User"}</p>
-                  </div>
-                )}
-              </div>
-            )}
 
             {!user ? (
               <p style={{ fontSize: "12px", color: "#dc3545", backgroundColor: "#f8d7da", padding: "10px", borderRadius: "4px" }}>
