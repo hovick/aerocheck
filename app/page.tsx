@@ -894,11 +894,8 @@ const handleDownloadLogs = async () => {
             {/* --- DEFINE TAB --- */}
             {activeTab === "define" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {/* --- PREMIUM OPEN SOURCE SEARCH --- */}
-                <div style={{ backgroundColor: "#e8f0fe", padding: "10px", borderRadius: "4px", border: "1px solid #cce5ff", position: "relative" }}>
-                  <label style={{...labelStyle, color: "#0b1b3d", display: "block", marginBottom: "5px"}}>
-                    ★ Premium Database Search 
-                  </label>
+                {/* --- OPEN SOURCE SEARCH --- */}
+                <div style={{ backgroundColor: "#e8f0fe", padding: "10px", borderRadius: "4px", border: "1px solid #cce5ff", opacity: user?.is_premium ? 1 : 0.6, position: "relative" }}>{/* --- , opacity: user?.is_premium ? 1 : 0.6, --- */}
                   
                   <input 
                     style={inputStyle} 
