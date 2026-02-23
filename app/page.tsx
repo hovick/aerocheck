@@ -16,7 +16,8 @@ export default function Home() {
   const activeTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
   const inactiveTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#ddd", color: "#555", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
   const createBtnStyle: React.CSSProperties = { marginTop: "15px", padding: "12px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "15px" };
-  const [user, setUser] = useState<{id: number, username: string, email?: string, is_premium: boolean, tier?: string} | null>(null);
+  const [registerEmail, setRegisterEmail] = useState(""); // --- NEW ---
+  const [user, setUser] = useState<{id: number, username: string, email?: string, is_premium: boolean, max_airports: number} | null>(null);
   // --- Profile Settings State ---
   const [logStartDate, setLogStartDate] = useState("");
   const [logEndDate, setLogEndDate] = useState("");
@@ -108,7 +109,12 @@ export default function Home() {
         const res = await fetch(`${API_BASE}/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: loginInput, password: passwordInput, is_premium: false })
+          body: JSON.stringify({ 
+            username: loginInput, 
+            password: passwordInput, 
+            email: registerEmail, // --- NEW ---
+            is_premium: false 
+          })
         });
         
         const data = await res.json();
@@ -188,12 +194,24 @@ export default function Home() {
     }
   }, [isXRayMode]);
 
-  // Check if user clicked a Password Reset link in their email
+  // Check if user clicked a Password Reset or Verification link
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const token = params.get("reset_token");
-      if (token) setResetToken(token);
+      const rToken = params.get("reset_token");
+      if (rToken) setResetToken(rToken);
+      
+      const vToken = params.get("verify_token");
+      if (vToken) {
+        fetch(`${API_BASE}/verify-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: vToken })
+        }).then(res => res.json()).then(data => {
+          alert(data.message || data.detail);
+          window.location.href = "/"; // Strip the token from the URL
+        });
+      }
     }
   }, []);
 
@@ -787,7 +805,7 @@ const handleDownloadLogs = async () => {
             5000 
         ));
 
-    if (!user || user.tier === "free") {
+    if (!user || !user.is_premium) {
             // Overwrite array so guests only hold 1 temporary surface in memory
             setSavedSurfaces([data]);
             setSelectedAnalysisAirport(data.airport_name);
@@ -1361,7 +1379,7 @@ const handleDownloadLogs = async () => {
             {/* --- DASHBOARD TAB --- */}
             {activeTab === "dashboard" && (() => {
               const uniqueAirportsCount = new Set(savedSurfaces.map(s => s.airport_name)).size;
-              const maxAirports = user?.tier === "multi" ? 10 : user?.tier === "single" ? 1 : 0;
+              const maxAirports = user ? user.max_airports : 0; // --- NEW: Dynamic from DB! ---
               
               return (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1550,6 +1568,17 @@ const handleDownloadLogs = async () => {
                   {!isRegistering && <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Create 1 surface as a guest, or log in.</p>}
                   <hr style={{ margin: "5px 0", borderTop: "1px solid #ddd" }} />
                   
+                  {/* --- NEW: Email Field (Only shows when registering) --- */}
+                  {isRegistering && (
+                    <input 
+                      style={{...inputStyle, padding: "6px"}} 
+                      type="email" 
+                      value={registerEmail} 
+                      onChange={e => setRegisterEmail(e.target.value)} 
+                      placeholder="Email Address" 
+                    />
+                  )}
+
                   <input style={{...inputStyle, padding: "6px"}} value={loginInput} onChange={e => setLoginInput(e.target.value)} placeholder="Username" />
                   <input type="password" style={{...inputStyle, padding: "6px"}} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Password" />
 
