@@ -947,7 +947,20 @@ const handleDownloadLogs = async () => {
                   />
 
                   {/* SEARCH RESULTS DROPDOWN */}
-                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, backgroundColor: "white", border: "1px solid #ccc", zIndex: 100, maxHeight: "300px", overflowY: "auto", boxShadow: "0 4px 8px rgba(0,0,0,0.1)" }}>
+                    <div style={{ 
+                      position: "absolute", 
+                      top: "100%", 
+                      left: 0, 
+                      right: 0, 
+                      backgroundColor: "#ffffff", 
+                      opacity: 1, 
+                      isolation: "isolate", 
+                      border: "1px solid #ccc", 
+                      zIndex: 9999, 
+                      maxHeight: "300px", 
+                      overflowY: "auto", 
+                      boxShadow: "0 8px 16px rgba(0,0,0,0.3)" 
+                    }}>
                       {family === "NAVAID" ? (
                         // NAVAID RESULTS
                         searchResults.map((nav, idx) => (
