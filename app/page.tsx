@@ -11,7 +11,7 @@ export default function Home() {
   const sidebarStyle: React.CSSProperties = { position: "absolute", top: "20px", left: "20px", width: "350px", padding: "20px", backgroundColor: "rgba(255,255,255,0.95)", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", maxHeight: "90vh", overflowY: "auto", zIndex: 10 };
   const rowStyle: React.CSSProperties = { display: "flex", gap: "8px" };
   const numInputStyle: React.CSSProperties = { flex: 1, minWidth: 0, padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "12px" };
-  const inputStyle: React.CSSProperties = { padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "14px", width: "100%" };
+  const inputStyle: React.CSSProperties = { padding: "8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "14px", width: "100%", backgroundColor: "#ffffff", color: "#333" };
   const labelStyle: React.CSSProperties = { fontSize: "12px", fontWeight: "bold", color: "#444", marginTop: "5px" };
   const activeTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
   const inactiveTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#ddd", color: "#555", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
@@ -39,9 +39,12 @@ export default function Home() {
   // --- NEW: UI & Redraw States ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const drawnSurfacesRef = useRef<any[]>([]);
+  // --- Map Display States ---
+  const [isGenericMode, setIsGenericMode] = useState(false);
+  const [showBuildings, setShowBuildings] = useState(false); // --- NEW ---
+  const buildingsRef = useRef<any>(null); // --- NEW ---
   // UI State: "define" or "analyze"
   const [activeTab, setActiveTab] = useState("define");
-  const [isGenericMode, setIsGenericMode] = useState(false);
   const genericColor = Cesium.Color.SLATEGRAY.withAlpha(0.5); // Choose your generic color here
   const [isXRayMode, setIsXRayMode] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
@@ -221,7 +224,8 @@ export default function Home() {
         baseLayerPicker: false,
         animation: false,
         timeline: false,
-      });
+      }
+    );
     }
   }, [mounted]);
 
@@ -246,6 +250,32 @@ export default function Home() {
       }
     });
   }, [isGenericMode]);
+
+  // --- NEW: Toggle 3D Buildings ---
+  useEffect(() => {
+    const toggleBuildings = async () => {
+      if (!viewerRef.current) return;
+      
+      // If checked and we haven't downloaded them yet
+      if (showBuildings && !buildingsRef.current) {
+        try {
+          const buildings = await Cesium.createOsmBuildingsAsync();
+          if (viewerRef.current) {
+            viewerRef.current.scene.primitives.add(buildings);
+            buildingsRef.current = buildings; // Save to memory!
+          }
+        } catch (err) {
+          console.error("Could not load 3D buildings", err);
+        }
+      } 
+      // If they are already in memory, just flip the visibility switch instantly
+      else if (buildingsRef.current) {
+        buildingsRef.current.show = showBuildings;
+      }
+    };
+    
+    toggleBuildings();
+  }, [showBuildings]);
 
   // Map Click Listener for Analyze Tab
   useEffect(() => {
@@ -815,24 +845,31 @@ const handleDownloadLogs = async () => {
         {/* CESIUM MAP CONTAINER */}
         <div ref={cesiumContainer} style={{ width: "100%", height: "100%" }} />
 
-        {/* --- NEW: ALTITUDE NEXUS BRANDING --- */}
-        <div style={{
-            position: "absolute",
-            bottom: "5px",
-            left: "5px",
-            backgroundColor: "#0b1b3d", // Deep Navy/Aerospace Blue
-            color: "#ffffff",
-            padding: "10px 100px",
-            borderRadius: "4px",
-            fontWeight: "900",
-            letterSpacing: "3px",
-            fontSize: "14px",
-            zIndex: 10,
-            boxShadow: "0 4px 10px rgba(0,0,0,0.5)",
-            pointerEvents: "none" // Prevents the logo from blocking map clicks
-        }}>
-            ALTITUDE NEXUS
-        </div>
+        {/* --- NEW: ALTITUDE NEXUS BRANDING LINK --- */}
+          <a 
+              href="https://www.altitudenexus.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                  position: "absolute",
+                  bottom: "5px",
+                  left: "5px",
+                  backgroundColor: "#0b1b3d", 
+                  color: "#ffffff",
+                  padding: "10px 100x",
+                  borderRadius: "4px",
+                  fontWeight: "900",
+                  letterSpacing: "3px",
+                  fontSize: "14px",
+                  zIndex: 10,
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.5)",
+                  textDecoration: "none", // Keeps it looking like a box instead of a blue link
+                  cursor: "pointer",
+                  pointerEvents: "auto" // FIXED: Allows the user to click it!
+              }}
+          >
+              ALTITUDE NEXUS
+          </a>
 
         {/* --- NEW: SIDEBAR TOGGLE ARROW --- */}
         <button 
@@ -875,6 +912,15 @@ const handleDownloadLogs = async () => {
               <label style={{ fontSize: "12px", display: "flex", gap: "5px", alignItems: "center" }}>
                 <input type="checkbox" checked={isGenericMode} onChange={e => setIsGenericMode(e.target.checked)} />
                 Activate Generic Color Mode (Blueprint)
+              </label>
+              {/* --- NEW: 3D Buildings Checkbox --- */}
+              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "5px", color: "#333", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  checked={showBuildings} 
+                  onChange={e => setShowBuildings(e.target.checked)} 
+                />
+                Show 3D Buildings
               </label>
             </div>
 
