@@ -913,7 +913,15 @@ const handleDownloadLogs = async () => {
                 <input type="checkbox" checked={isGenericMode} onChange={e => setIsGenericMode(e.target.checked)} />
                 Activate Generic Color Mode (Blueprint)
               </label>
-              
+              {/* --- NEW: 3D Buildings Checkbox --- */}
+              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "5px", color: "#333", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  checked={showBuildings} 
+                  onChange={e => setShowBuildings(e.target.checked)} 
+                />
+                Show 3D Buildings
+              </label>
             </div>
 
             {/* TAB NAVIGATION */}
