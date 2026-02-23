@@ -856,11 +856,11 @@ const handleDownloadLogs = async () => {
                   left: "5px",
                   backgroundColor: "#0b1b3d", 
                   color: "#ffffff",
-                  padding: "10px 100x",
+                  padding: "10px 100px",
                   borderRadius: "4px",
                   fontWeight: "900",
                   letterSpacing: "3px",
-                  fontSize: "14px",
+                  fontSize: "16px",
                   zIndex: 10,
                   boxShadow: "0 4px 10px rgba(0,0,0,0.5)",
                   textDecoration: "none", // Keeps it looking like a box instead of a blue link
@@ -913,15 +913,7 @@ const handleDownloadLogs = async () => {
                 <input type="checkbox" checked={isGenericMode} onChange={e => setIsGenericMode(e.target.checked)} />
                 Activate Generic Color Mode (Blueprint)
               </label>
-              {/* --- NEW: 3D Buildings Checkbox --- */}
-              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "5px", color: "#333", cursor: "pointer" }}>
-                <input 
-                  type="checkbox" 
-                  checked={showBuildings} 
-                  onChange={e => setShowBuildings(e.target.checked)} 
-                />
-                Show 3D Buildings
-              </label>
+              
             </div>
 
             {/* TAB NAVIGATION */}
@@ -948,6 +940,10 @@ const handleDownloadLogs = async () => {
                     value={searchQuery} 
                     onChange={e => handleSearch(e.target.value)} 
                     placeholder={family === "NAVAID" ? "Search Navaid (e.g. JFK or Kennedy)" : "Search Airport ICAO or Name (e.g. EGLL or Heathrow)"}
+                    onBlur={() => setTimeout(() => {
+                        setSearchResults([]);
+                        setSearchQuery("");
+                      }, 200)}
                   />
 
                   {/* SEARCH RESULTS DROPDOWN */}
