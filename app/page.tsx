@@ -76,6 +76,14 @@ export default function Home() {
 
   const [batchInput, setBatchInput] = useState("");
   const [batchResults, setBatchResults] = useState<any[]>([]);
+  // RNAV State
+  const [rnavMode, setRnavMode] = useState("RNP APCH");
+  // Intermediate Fix
+  const [ifPos, setIfPos] = useState({ lat: 51.5, lon: -0.6, alt: 900 }); 
+  // Final Approach Fix
+  const [fafPos, setFafPos] = useState({ lat: 51.48, lon: -0.5, alt: 600 });
+  // Missed Approach Point
+  const [maptPos, setMaptPos] = useState({ lat: 51.465, lon: -0.44, alt: 100 });
 
   // NAVAID specific state
   const [navType, setNavType] = useState("CVOR");
@@ -792,6 +800,12 @@ const handleDownloadLogs = async () => {
         t1, t2, arp_alt: arpAlt,
         vss_params: family === "VSS" ? vssParams : null,
         adg: family === "OFZ" ? adg : null,
+        rnav_params: family === "RNAV" ? {
+          mode: rnavMode,
+          if_lat: ifPos.lat, if_lon: ifPos.lon, if_alt: ifPos.alt,
+          faf_lat: fafPos.lat, faf_lon: fafPos.lon, faf_alt: fafPos.alt,
+          mapt_lat: maptPos.lat, mapt_lon: maptPos.lon, mapt_alt: maptPos.alt
+        } : null,
         navaid_params: family === "NAVAID" ? {
             n_type: navType,
             lat: navCoord.lat,
@@ -1104,6 +1118,7 @@ const handleDownloadLogs = async () => {
                 <select style={inputStyle} value={family} onChange={e => setFamily(e.target.value)}>
                   <option value="OLS">OLS (Annex 14)</option>
                   {/*<option value="OAS">OAS (PANS-OPS)</option>*/}
+                  <option value="RNAV">RNAV / RNP Procedure</option>
                   <option value="VSS">VSS (Visual Segment)</option>
                   <option value="OFZ">OFZ / OES</option>
                   <option value="NAVAID">Navaid Restrictive</option>
@@ -1137,6 +1152,43 @@ const handleDownloadLogs = async () => {
                       <option value="precision">Precision Approach</option>
                     </select>
                   </>
+                )}
+                
+                {/* --- DYNAMIC RNAV FIELDS --- */}
+                {family === "RNAV" && (
+                  <div style={{ backgroundColor: "#e9ecef", padding: "10px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <label style={labelStyle}>Procedure Specification</label>
+                    <select style={inputStyle} value={rnavMode} onChange={e => setRnavMode(e.target.value)}>
+                      <option value="RNP APCH">RNP APCH (LNAV/VNAV, LPV)</option>
+                      <option value="RNAV 1">RNAV 1 / Basic RNP-1</option>
+                      <option value="RNAV 2">RNAV 2</option>
+                    </select>
+                    
+                    <p style={{fontSize: "10px", color: "#555", margin: 0}}>
+                        * Automatically calculates XTT/ATT and Area Semi-widths based on selection.
+                    </p>
+
+                    <label style={{...labelStyle, color: "#d35400"}}>1. Intermediate Fix (IF)</label>
+                    <div style={rowStyle}>
+                        <input style={numInputStyle} placeholder="Lat" type="number" value={ifPos.lat} onChange={e => setIfPos({...ifPos, lat: +e.target.value})} />
+                        <input style={numInputStyle} placeholder="Lon" type="number" value={ifPos.lon} onChange={e => setIfPos({...ifPos, lon: +e.target.value})} />
+                        <input style={numInputStyle} placeholder="Alt (m)" type="number" value={ifPos.alt} onChange={e => setIfPos({...ifPos, alt: +e.target.value})} />
+                    </div>
+
+                    <label style={{...labelStyle, color: "#27ae60"}}>2. Final Approach Fix (FAF)</label>
+                    <div style={rowStyle}>
+                        <input style={numInputStyle} placeholder="Lat" type="number" value={fafPos.lat} onChange={e => setFafPos({...fafPos, lat: +e.target.value})} />
+                        <input style={numInputStyle} placeholder="Lon" type="number" value={fafPos.lon} onChange={e => setFafPos({...fafPos, lon: +e.target.value})} />
+                        <input style={numInputStyle} placeholder="Alt (m)" type="number" value={fafPos.alt} onChange={e => setFafPos({...fafPos, alt: +e.target.value})} />
+                    </div>
+
+                    <label style={{...labelStyle, color: "#c0392b"}}>3. Missed Approach Point (MAPt)</label>
+                    <div style={rowStyle}>
+                        <input style={numInputStyle} placeholder="Lat" type="number" value={maptPos.lat} onChange={e => setMaptPos({...maptPos, lat: +e.target.value})} />
+                        <input style={numInputStyle} placeholder="Lon" type="number" value={maptPos.lon} onChange={e => setMaptPos({...maptPos, lon: +e.target.value})} />
+                        <input style={numInputStyle} placeholder="MDA/DA (m)" type="number" value={maptPos.alt} onChange={e => setMaptPos({...maptPos, alt: +e.target.value})} />
+                    </div>
+                  </div>
                 )}
 
                 {/* DYNAMIC VSS FIELDS */}
@@ -1300,11 +1352,11 @@ const handleDownloadLogs = async () => {
                                 
                                 // --- THE TOKEN SWAP ---
                                 if (data.ion_token) {
-                                  console.log("Switching to CAA Custom Ion Token...");
+                                  console.log("Switching to CAA Custom data...");
                                   Cesium.Ion.defaultAccessToken = data.ion_token;
                                   setCurrentOwnerToken(data.ion_token); // --- NEW: Save to state! ---
                                 } else {
-                                  console.log("Using Default Altitude Nexus Token.");
+                                  console.log("Using Default Altitude Nexus Data.");
                                   Cesium.Ion.defaultAccessToken = DEFAULT_ION_TOKEN;
                                   setCurrentOwnerToken(null); // Reset if no custom token
                                 }
@@ -1321,7 +1373,7 @@ const handleDownloadLogs = async () => {
                                     const buildings = await Cesium.createOsmBuildingsAsync();
                                     viewerRef.current.scene.primitives.add(buildings);
                                     buildingsRef.current = buildings;
-                                  } catch (err) { console.error("Failed to reload buildings with new token", err); }
+                                  } catch (err) { console.error("Failed to reload buildings with new data", err); }
                                 }
 
                                 // Draw the surfaces
@@ -1830,15 +1882,15 @@ const handleDownloadLogs = async () => {
                         <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
                         {/* --- NEW: CESIUM ION TOKEN INPUT --- */}
                         <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: "1px dashed #ccc" }}>
-                          <label style={{ fontSize: "10px", fontWeight: "bold", color: "#666" }}>Custom Cesium Ion Token (Optional)</label>
+                          <label style={{ fontSize: "10px", fontWeight: "bold", color: "#666" }}>Custom Buildings data code (Optional)</label>
                           <input 
                             style={{...inputStyle, padding: "6px", fontSize: "12px", fontFamily: "monospace", backgroundColor: "#f0f0f0"}} 
                             value={editIonToken} 
                             onChange={e => setEditIonToken(e.target.value)} 
-                            placeholder="eyJhbGciOiJIUzI1NiIsIn..." 
+                            placeholder="Contact us to receive one" 
                           />
                           <p style={{ fontSize: "10px", color: "#888", margin: "2px 0 0 0" }}>
-                            If provided, users viewing your surfaces will use this token for 3D assets.
+                            If provided, users viewing your surfaces will use this data for 3D assets.
                           </p>
                         </div>
                         <button 
