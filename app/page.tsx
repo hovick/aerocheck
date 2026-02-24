@@ -21,6 +21,10 @@ export default function Home() {
   // YOUR Global Default Token (The one currently in useEffect)
   const DEFAULT_ION_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOTZmOGMwZC1kNTlkLTRkYWUtYWUxZC0wMzBlOWVlNmM3N2QiLCJpZCI6ODM2NDQsImlhdCI6MTY0NTY5NTMxN30.qUC3Y6wM0_bcbb73TLGH87Azql1ZDX5gM_7relGRRSg';
   const [editIonToken, setEditIonToken] = useState(""); // --- NEW ---
+  // ... inside Home() ...
+  const [showGoogleTiles, setShowGoogleTiles] = useState(false); // Checkbox state
+  const googleTilesRef = useRef<any>(null); // Memory reference to the tileset
+  const [currentOwnerToken, setCurrentOwnerToken] = useState<string | null>(null); // Track if we are using a custom token
   // --- Profile Settings State ---
   const [logStartDate, setLogStartDate] = useState("");
   const [logEndDate, setLogEndDate] = useState("");
@@ -250,6 +254,45 @@ export default function Home() {
     );
     }
   }, [mounted]);
+
+  // --- NEW: Toggle Google Photorealistic 3D Tiles ---
+  useEffect(() => {
+    const toggleGoogleTiles = async () => {
+      if (!viewerRef.current) return;
+
+      if (showGoogleTiles) {
+        try {
+          // 1. Remove standard OSM buildings if they overlap
+          if (buildingsRef.current) {
+            viewerRef.current.scene.primitives.remove(buildingsRef.current);
+            buildingsRef.current = null;
+            setShowBuildings(false); // Uncheck the other box
+          }
+
+          // 2. Load Google 3D Tiles (Asset ID 2275207)
+          // Note: This requires the Ion Token to have access to Google Maps Platform via Cesium Ion
+          const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(2275207);
+          viewerRef.current.scene.primitives.add(tileset);
+          googleTilesRef.current = tileset;
+          
+          // Optional: Fly to the tileset to ensure it loaded (usually not needed if already at airport)
+          // viewerRef.current.zoomTo(tileset); 
+
+        } catch (err) {
+          alert("Could not load Google 3D Tiles. Please ensure the Owner's Token is valid and authorized for Google Maps Platform.");
+          setShowGoogleTiles(false); // Reset checkbox on error
+        }
+      } else {
+        // Remove the tileset
+        if (googleTilesRef.current) {
+          viewerRef.current.scene.primitives.remove(googleTilesRef.current);
+          googleTilesRef.current = null;
+        }
+      }
+    };
+
+    toggleGoogleTiles();
+  }, [showGoogleTiles]);
 
   // Dynamic Vertical Exaggeration
   useEffect(() => {
@@ -1182,6 +1225,18 @@ const handleDownloadLogs = async () => {
             {activeTab === "analyze" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 
+                {/* --- NEW: Google 3D Tiles Checkbox (Only if Custom Token Exists) --- */}
+                {currentOwnerToken && (
+                  <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "5px", color: "#333", cursor: "pointer", marginLeft: "15px" }}>
+                    <input 
+                      type="checkbox" 
+                      checked={showGoogleTiles} 
+                      onChange={e => setShowGoogleTiles(e.target.checked)} 
+                    />
+                    <span style={{ fontWeight: "bold", color: "#4285F4" }}>G</span>oogle 3D Tiles
+                  </label>
+                )}
+
                 {/* 1. PUBLIC PREMIUM SURFACES SEARCH */}
                 <div style={{ backgroundColor: "#f8f9fa", padding: "10px", borderRadius: "4px", border: "1px solid #ddd", position: "relative" }}>
                   <label style={{...labelStyle, color: "#0b1b3d", display: "block", marginBottom: "5px"}}>
@@ -1215,9 +1270,11 @@ const handleDownloadLogs = async () => {
                                 if (data.ion_token) {
                                   console.log("Switching to CAA Custom Ion Token...");
                                   Cesium.Ion.defaultAccessToken = data.ion_token;
+                                  setCurrentOwnerToken(data.ion_token); // --- NEW: Save to state! ---
                                 } else {
                                   console.log("Using Default Altitude Nexus Token.");
                                   Cesium.Ion.defaultAccessToken = DEFAULT_ION_TOKEN;
+                                  setCurrentOwnerToken(null); // Reset if no custom token
                                 }
 
                                 // If 3D Buildings are currently ON, we must reload them to use the new token!
