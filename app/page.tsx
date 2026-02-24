@@ -614,8 +614,9 @@ export default function Home() {
   };
 
   const handleExport = async (format: 'kml' | 'dxf') => {
-    const res = await fetch(`${API_BASE}/export/kml?airport_name=${encodeURIComponent(selectedAnalysisAirport)}`, {
-      headers: getAuthHeaders() // Inject our Premium JWT Token!
+    // FIXED: Dynamically use the 'format' variable in the URL
+    const res = await fetch(`${API_BASE}/export/${format}?airport_name=${encodeURIComponent(selectedAnalysisAirport)}`, {
+      headers: getAuthHeaders()
     });
     
     if (!res.ok) {
@@ -623,12 +624,11 @@ export default function Home() {
       return alert(`Export Error: ${err.detail}`);
     }
     
-    // Convert the response to a file and trigger a silent download
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `airspace_export.${format}`);
+    link.setAttribute("download", `${selectedAnalysisAirport.replace(/\s+/g, '_')}.${format}`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
