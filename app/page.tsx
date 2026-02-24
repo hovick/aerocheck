@@ -256,6 +256,7 @@ export default function Home() {
   }, [mounted]);
 
   // --- NEW: Toggle Google Photorealistic 3D Tiles ---
+  // --- NEW: Toggle Google Photorealistic 3D Tiles ---
   useEffect(() => {
     const toggleGoogleTiles = async () => {
       if (!viewerRef.current) return;
@@ -266,28 +267,32 @@ export default function Home() {
           if (buildingsRef.current) {
             viewerRef.current.scene.primitives.remove(buildingsRef.current);
             buildingsRef.current = null;
-            setShowBuildings(false); // Uncheck the other box
+            setShowBuildings(false); 
           }
 
-          // 2. Load Google 3D Tiles (Asset ID 2275207)
-          // Note: This requires the Ion Token to have access to Google Maps Platform via Cesium Ion
+          // 2. Load Google 3D Tiles
           const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(2275207);
           viewerRef.current.scene.primitives.add(tileset);
           googleTilesRef.current = tileset;
           
-          // Optional: Fly to the tileset to ensure it loaded (usually not needed if already at airport)
-          // viewerRef.current.zoomTo(tileset); 
+          // --- FIX: USE THE NEW ".terrain" PROPERTY ---
+          // Setting this to undefined makes it a smooth Ellipsoid (WGS84)
+          // so it doesn't poke through the Google 3D mesh.
+          (viewerRef.current.scene as any).terrain = undefined; 
 
         } catch (err) {
-          alert("Could not load Google 3D Tiles. Please ensure the Owner's Token is valid and authorized for Google Maps Platform.");
-          setShowGoogleTiles(false); // Reset checkbox on error
+          alert("Could not load Google 3D Tiles.");
+          setShowGoogleTiles(false); 
         }
       } else {
-        // Remove the tileset
+        // Remove the Google tileset
         if (googleTilesRef.current) {
           viewerRef.current.scene.primitives.remove(googleTilesRef.current);
           googleTilesRef.current = null;
         }
+
+        // --- FIX: RESTORE WORLD TERRAIN USING ".terrain" ---
+        (viewerRef.current.scene as any).terrain = Cesium.Terrain.fromWorldTerrain();
       }
     };
 
