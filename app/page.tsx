@@ -79,7 +79,7 @@ export default function Home() {
   // RNAV State
   const [rnavMode, setRnavMode] = useState("RNP APCH");
   // Intermediate Fix
-  const [ifPos, setIfPos] = useState({ lat: 51.5, lon: -0.6, alt: 900 }); 
+  const [ifPos, setIfPos] = useState({ lat: 51.5, lon: -0.6}); 
   // Final Approach Fix
   const [fafPos, setFafPos] = useState({ lat: 51.48, lon: -0.5, alt: 600 });
   // Missed Approach Point
@@ -802,7 +802,7 @@ const handleDownloadLogs = async () => {
         adg: family === "OFZ" ? adg : null,
         rnav_params: family === "RNAV" ? {
           mode: rnavMode,
-          if_lat: ifPos.lat, if_lon: ifPos.lon, if_alt: ifPos.alt,
+          if_lat: ifPos.lat, if_lon: ifPos.lon,
           faf_lat: fafPos.lat, faf_lon: fafPos.lon, faf_alt: fafPos.alt,
           mapt_lat: maptPos.lat, mapt_lon: maptPos.lon, mapt_alt: maptPos.alt
         } : null,
@@ -1172,7 +1172,6 @@ const handleDownloadLogs = async () => {
                     <div style={rowStyle}>
                         <input style={numInputStyle} placeholder="Lat" type="number" value={ifPos.lat} onChange={e => setIfPos({...ifPos, lat: +e.target.value})} />
                         <input style={numInputStyle} placeholder="Lon" type="number" value={ifPos.lon} onChange={e => setIfPos({...ifPos, lon: +e.target.value})} />
-                        <input style={numInputStyle} placeholder="Alt (m)" type="number" value={ifPos.alt} onChange={e => setIfPos({...ifPos, alt: +e.target.value})} />
                     </div>
 
                     <label style={{...labelStyle, color: "#27ae60"}}>2. Final Approach Fix (FAF)</label>
