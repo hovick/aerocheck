@@ -64,6 +64,7 @@ export default function Home() {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   // Map Controls State
   const [exaggeration, setExaggeration] = useState(1);
+  const [geoidOffset, setGeoidOffset] = useState(0);
   // Public Surface Search State
   const [pubSurfQuery, setPubSurfQuery] = useState("");
   const [pubSurfResults, setPubSurfResults] = useState<any[]>([]);
@@ -304,14 +305,6 @@ export default function Home() {
 
     toggleGoogleTiles();
   }, [showGoogleTiles]);
-
-  // Dynamic Vertical Exaggeration
-  useEffect(() => {
-    if (viewerRef.current) {
-      // Applies the multiplier to both the terrain and the 3D surfaces
-      viewerRef.current.scene.verticalExaggeration = exaggeration;
-    }
-  }, [exaggeration]);
 
   useEffect(() => {
     if (!viewerRef.current) return;
@@ -567,21 +560,27 @@ export default function Home() {
   const handleDrawSurface = (surfaceInput: any | any[]) => {
     if (!viewerRef.current) return;
     
+    // Save to memory
+    const surfaces = Array.isArray(surfaceInput) ? surfaceInput : [surfaceInput];
+    drawnSurfacesRef.current = surfaces;
+
     viewerRef.current.entities.removeAll();
     const entitiesToAdd: Cesium.Entity[] = [];
-
-    const surfaces = Array.isArray(surfaceInput) ? surfaceInput : [surfaceInput];
-    
-    // --- NEW: Save to memory so we can redraw it later! ---
-    drawnSurfacesRef.current = surfaces;
 
     surfaces.forEach(surface => {
         if (surface.geometry) {
             surface.geometry.forEach((geo: any) => {
+                // --- APPLY GEOID OFFSET & EXAGGERATION ---
+                // Math: (Base Altitude + Geoid Offset) * Exaggeration Factor
+                const adjustedCoords = [...geo.coords];
+                for (let i = 2; i < adjustedCoords.length; i += 3) {
+                    adjustedCoords[i] = (adjustedCoords[i] + geoidOffset) * exaggeration;
+                }
+
                 const entity = viewerRef.current?.entities.add({
                     name: geo.name,
                     polygon: {
-                        hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(geo.coords),
+                        hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(adjustedCoords), 
                         perPositionHeight: true, 
                         material: isGenericMode 
                           ? genericColor
@@ -1636,7 +1635,7 @@ const handleDownloadLogs = async () => {
           <div style={{
             position: "absolute",
             bottom: "30px",
-            right: "30px", // Puts it in the bottom right corner of the map
+            right: "30px",
             backgroundColor: "rgba(255, 255, 255, 0.9)",
             padding: "10px 15px",
             borderRadius: "8px",
@@ -1660,12 +1659,24 @@ const handleDownloadLogs = async () => {
               min="1"
               max="10"
               step="0.5"
-              value={exaggeration}
-              onChange={(e) => setExaggeration(parseFloat(e.target.value))}
+              defaultValue={1} // Use defaultValue for uncontrolled input behavior
+              onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setExaggeration(val);
+                  // 1. Instantly update Terrain (Cheap)
+                  if (viewerRef.current) {
+                      viewerRef.current.scene.verticalExaggeration = val;
+                  }
+              }}
+              onMouseUp={() => {
+                  // 2. Only Redraw Surfaces when user RELEASES the mouse (Expensive)
+                  if (drawnSurfacesRef.current.length > 0) {
+                      handleDrawSurface(drawnSurfacesRef.current);
+                  }
+              }}
               style={{ width: "100%", cursor: "pointer" }}
             />
           </div>
-          {/* --------------------------- */}
 
           {/* --- ACCOUNT / LOGIN PANEL (Floating Box) --- */}
           <div style={{ position: "absolute", bottom: "100px", right: "20px", width: "300px", backgroundColor: "rgba(255, 255, 255, 0.95)", padding: "15px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", border: "1px solid #ddd", zIndex: 10 }}>
