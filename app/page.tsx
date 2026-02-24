@@ -62,11 +62,6 @@ export default function Home() {
   const genericColor = Cesium.Color.SLATEGRAY.withAlpha(0.5); // Choose your generic color here
   const [isXRayMode, setIsXRayMode] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
-  // PBN / RNAV State
-  const [pbnMode, setPbnMode] = useState("LPV");
-  const [pbnRnp, setPbnRnp] = useState(0.3);
-  const [pbnFafDist, setPbnFafDist] = useState(5.0); // NM
-  const [pbnDa, setPbnDa] = useState(100); // Meters (DA/MDA)
   // Map Controls State
   const [exaggeration, setExaggeration] = useState(1);
   // Public Surface Search State
@@ -798,13 +793,6 @@ const handleDownloadLogs = async () => {
         t1, t2, arp_alt: arpAlt,
         vss_params: family === "VSS" ? vssParams : null,
         adg: family === "OFZ" ? adg : null,
-        pbn_params: family === "PBN" ? {
-            mode: pbnMode,
-            rnp_value: pbnRnp,
-            faf_dist: pbnFafDist,
-            decision_alt: pbnDa,
-            missed_approach_climb_grad: 2.5
-        } : null,
         navaid_params: family === "NAVAID" ? {
             n_type: navType,
             lat: navCoord.lat,
@@ -1117,7 +1105,6 @@ const handleDownloadLogs = async () => {
                 <select style={inputStyle} value={family} onChange={e => setFamily(e.target.value)}>
                   <option value="OLS">OLS (Annex 14)</option>
                   {/*<option value="OAS">OAS (PANS-OPS)</option>*/}
-                  <option value="PBN">PBN (LNAV / LPV)</option>
                   <option value="VSS">VSS (Visual Segment)</option>
                   <option value="OFZ">OFZ / OES</option>
                   <option value="NAVAID">Navaid Restrictive</option>
@@ -1140,38 +1127,6 @@ const handleDownloadLogs = async () => {
 
                 <label style={labelStyle}>ARP Altitude (m)</label>
                 <input style={inputStyle} type="number" value={arpAlt} onChange={e => setArpAlt(+e.target.value)} />
-
-                {/* --- DYNAMIC PBN FIELDS --- */}
-                {family === "PBN" && (
-                  <div style={{ backgroundColor: "#e9ecef", padding: "10px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={labelStyle}>Approach Type</label>
-                    <select style={inputStyle} value={pbnMode} onChange={e => setPbnMode(e.target.value)}>
-                      <option value="LPV">LPV (SBAS Cat I-like)</option>
-                      <option value="LNAV/VNAV">LNAV/VNAV (Baro-VNAV)</option>
-                      <option value="LNAV">LNAV (Non-Precision)</option>
-                    </select>
-
-                    <div style={rowStyle}>
-                        <div style={{flex:1}}>
-                            <label style={labelStyle}>RNP Value (NM)</label>
-                            <input style={numInputStyle} type="number" step="0.1" value={pbnRnp} onChange={e => setPbnRnp(+e.target.value)} />
-                        </div>
-                        <div style={{flex:1}}>
-                             <label style={labelStyle}>FAF Dist (NM)</label>
-                             <input style={numInputStyle} type="number" value={pbnFafDist} onChange={e => setPbnFafDist(+e.target.value)} />
-                        </div>
-                    </div>
-
-                    <label style={labelStyle}>
-                        {pbnMode === "LNAV" ? "MDA (Min Descent Alt) in meters" : "DA (Decision Alt) / Start Alt (m)"}
-                    </label>
-                    <input style={inputStyle} type="number" value={pbnDa} onChange={e => setPbnDa(+e.target.value)} />
-                    
-                    <p style={{fontSize: "10px", color: "#555", marginTop: "5px"}}>
-                        * Generates OCS (Obstacle Clearance Surface) based on 2.5% slope (standard 40:1).
-                    </p>
-                  </div>
-                )}
 
                 {/* NEW RUNWAY TYPE DROPDOWN (Only show for OLS) */}
                 {(family === "OLS" || family === "OFZ") && (
