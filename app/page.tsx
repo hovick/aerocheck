@@ -25,6 +25,12 @@ export default function Home() {
   const [showGoogleTiles, setShowGoogleTiles] = useState(false); // Checkbox state
   const googleTilesRef = useRef<any>(null); // Memory reference to the tileset
   const [currentOwnerToken, setCurrentOwnerToken] = useState<string | null>(null); // Track if we are using a custom token
+  // ... existing states ...
+  const [isResending, setIsResending] = useState(false); // UI toggle for Resend View
+  const [resendEmailInput, setResendEmailInput] = useState(""); // Input for Resend
+  // Loading States for Buttons
+  const [isCreating, setIsCreating] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   // --- Profile Settings State ---
   const [logStartDate, setLogStartDate] = useState("");
   const [logEndDate, setLogEndDate] = useState("");
@@ -816,56 +822,62 @@ const handleDownloadLogs = async () => {
 
             bodyData = { ...bodyData, custom_coords: coords };
       }
+    setIsCreating(true); // START LOADING
+    try {
+      const res = await fetch(`${API_BASE}/create-surface`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(bodyData),
+      });
+
+      const data = await res.json();
+      if (data.error) return alert(data.error); // Catch DB limits
       
-    const res = await fetch(`${API_BASE}/create-surface`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(bodyData),
-    });
+      if (viewerRef.current && data.geometry) {
+          // 1. Clear previous entities and enable terrain depth testing
+          viewerRef.current.entities.removeAll();
+          
+          // 2. Define the array at the start of the block so it is accessible everywhere
+          const entitiesToAdd: Cesium.Entity[] = [];
 
-    const data = await res.json();
-    if (data.error) return alert(data.error); // Catch DB limits
-    
-    if (viewerRef.current && data.geometry) {
-        // 1. Clear previous entities and enable terrain depth testing
-        viewerRef.current.entities.removeAll();
-        
-        // 2. Define the array at the start of the block so it is accessible everywhere
-        const entitiesToAdd: Cesium.Entity[] = [];
+          data.geometry.forEach((geo: any) => {
+              const entity = viewerRef.current?.entities.add({
+                  name: geo.name,
+                  polygon: {
+                      hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(geo.coords),
+                      // Enabling perPositionHeight gives the surfaces their 3D altitude
+                      perPositionHeight: true, 
+                      material: isGenericMode 
+                        ? genericColor
+                        : Cesium.Color.fromCssColorString(geo.color).withAlpha(0.4),
+                      outline: true,
+                      outlineColor: Cesium.Color.BLACK
+                  }
+              });
+              if (entity) entitiesToAdd.push(entity);
+          });
 
-        data.geometry.forEach((geo: any) => {
-            const entity = viewerRef.current?.entities.add({
-                name: geo.name,
-                polygon: {
-                    hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(geo.coords),
-                    // Enabling perPositionHeight gives the surfaces their 3D altitude
-                    perPositionHeight: true, 
-                    material: isGenericMode 
-                      ? genericColor
-                      : Cesium.Color.fromCssColorString(geo.color).withAlpha(0.4),
-                    outline: true,
-                    outlineColor: Cesium.Color.BLACK
-                }
-            });
-            if (entity) entitiesToAdd.push(entity);
-        });
+          // 3. ZOOM IN: Now 'entitiesToAdd' is correctly populated and in scope
+          viewerRef.current.zoomTo(entitiesToAdd, new Cesium.HeadingPitchRange(
+              Cesium.Math.toRadians(0), 
+              Cesium.Math.toRadians(-45), 
+              5000 
+          ));
 
-        // 3. ZOOM IN: Now 'entitiesToAdd' is correctly populated and in scope
-        viewerRef.current.zoomTo(entitiesToAdd, new Cesium.HeadingPitchRange(
-            Cesium.Math.toRadians(0), 
-            Cesium.Math.toRadians(-45), 
-            5000 
-        ));
-
-    if (!user || !user.is_premium) {
-            // Overwrite array so guests only hold 1 temporary surface in memory
-            setSavedSurfaces([data]);
-            setSelectedAnalysisAirport(data.airport_name);
-            setSelectedAnalysisOwner(0); // Force owner to 0 so the Analyze button knows it's temporary
-        } else {
-            // Pros get appended permanently
-            setSavedSurfaces(prev => [...prev, data]);
-        }
+      if (!user || !user.is_premium) {
+              // Overwrite array so guests only hold 1 temporary surface in memory
+              setSavedSurfaces([data]);
+              setSelectedAnalysisAirport(data.airport_name);
+              setSelectedAnalysisOwner(0); // Force owner to 0 so the Analyze button knows it's temporary
+          } else {
+              // Pros get appended permanently
+              setSavedSurfaces(prev => [...prev, data]);
+          }
+      }
+    } catch (error) {
+    alert("An error occurred while creating the surface.");
+    } finally {
+        setIsCreating(false); // STOP LOADING (Always runs)
     }
   };
 
@@ -1222,7 +1234,13 @@ const handleDownloadLogs = async () => {
                   </div>
                 )}
 
-                <button onClick={handleDefine} style={createBtnStyle}>Create {family}</button>
+                <button 
+                  onClick={handleDefine} 
+                  style={{...createBtnStyle, opacity: isCreating ? 0.7 : 1, cursor: isCreating ? "wait" : "pointer"}}
+                  disabled={isCreating}
+                >
+                  {isCreating ? "⏳ Creating Surface..." : `Create ${family}`}
+                </button>
               </div>
             )}
 
@@ -1360,39 +1378,46 @@ const handleDownloadLogs = async () => {
                 </div>
 
                 <button 
-                  style={{ ...createBtnStyle, backgroundColor: "#0b1b3d" }}
+                  style={{ ...createBtnStyle, backgroundColor: "#0b1b3d", opacity: isAnalyzing ? 0.7 : 1, cursor: isAnalyzing ? "wait" : "pointer" }}
+                  disabled={isAnalyzing}
                   onClick={async () => {
                     if (!selectedAnalysisAirport) return alert("Please select an airport first!");
                     
                     // Clear previous results while loading
+                    setIsAnalyzing(true); // START LOADING
                     setAnalysisResult(null);
-
-                    const isGuestAirport = selectedAnalysisOwner === 0;
-                    const guestPayload = isGuestAirport 
-                      ? savedSurfaces.filter(s => s.airport_name === selectedAnalysisAirport).map(s => ({name: s.name, geometry: s.geometry}))
-                      : null;
-
-                    const res = await fetch(`${API_BASE}/analyze`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        lat: obsPos.lat,
-                        lon: obsPos.lon,
-                        alt: obsPos.alt,
-                        airport_name: selectedAnalysisAirport,
-                        owner_id: selectedAnalysisOwner,
-                        guest_surfaces: guestPayload // --- NEW ---
-                      }),
-                    });
-                    
-                    const result = await res.json();
-                    if (result.error) return alert(result.error);
-                    
-                    // Save result to state instead of an alert!
-                    setAnalysisResult(result);
+                    try {
+                      const isGuestAirport = selectedAnalysisOwner === 0;
+                      const guestPayload = isGuestAirport 
+                        ? savedSurfaces.filter(s => s.airport_name === selectedAnalysisAirport).map(s => ({name: s.name, geometry: s.geometry}))
+                        : null;
+                      
+                      const res = await fetch(`${API_BASE}/analyze`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          lat: obsPos.lat,
+                          lon: obsPos.lon,
+                          alt: obsPos.alt,
+                          airport_name: selectedAnalysisAirport,
+                          owner_id: selectedAnalysisOwner,
+                          guest_surfaces: guestPayload // --- NEW ---
+                        }),
+                      });
+                      
+                      const result = await res.json();
+                      if (result.error) return alert(result.error);
+                      
+                      // Save result to state instead of an alert!
+                      setAnalysisResult(result);
+                      } catch (err) {
+                        alert("Analysis failed.");
+                    } finally {
+                        setIsAnalyzing(false); // STOP LOADING
+                    }
                   }}
                 >
-                  Run Analysis
+                  {isAnalyzing ? "⚙️ Processing Geometry..." : "Run Analysis"}
                 </button>
 
                 {/* --- NEW: ANALYSIS RESULTS UI & PDF EXPORT --- */}
@@ -1645,7 +1670,47 @@ const handleDownloadLogs = async () => {
           {/* --- ACCOUNT / LOGIN PANEL (Floating Box) --- */}
           <div style={{ position: "absolute", bottom: "100px", right: "20px", width: "300px", backgroundColor: "rgba(255, 255, 255, 0.95)", padding: "15px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", border: "1px solid #ddd", zIndex: 10 }}>
             {!user ? (
-              isForgotPassword ? (
+              isResending ? (
+                // --- RESEND VERIFICATION PANEL ---
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <strong style={{ fontSize: "14px", color: "#333" }}>Resend Verification</strong>
+                  <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Enter your email to receive a new activation link.</p>
+                  
+                  <input 
+                    style={{...inputStyle, padding: "6px"}} 
+                    type="email" 
+                    value={resendEmailInput} 
+                    onChange={e => setResendEmailInput(e.target.value)} 
+                    placeholder="Registered Email Address" 
+                  />
+                  
+                  <button 
+                    style={{...activeTabBtn, padding: "8px", backgroundColor: "#17a2b8"}} 
+                    onClick={async () => {
+                      if (!resendEmailInput) return alert("Please enter your email");
+                      
+                      const res = await fetch(`${API_BASE}/resend-verification`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: resendEmailInput })
+                      });
+                      
+                      const data = await res.json();
+                      alert(data.message);
+                      setIsResending(false);
+                    }}
+                  >
+                    Send New Link
+                  </button>
+                  
+                  <button 
+                    style={{ backgroundColor: "transparent", border: "none", color: "#666", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} 
+                    onClick={() => setIsResending(false)}
+                  >
+                    Back to Login
+                  </button>
+                </div>
+              ) : isForgotPassword ? (
                 // --- FORGOT PASSWORD PANEL ---
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   <strong style={{ fontSize: "14px", color: "#333" }}>Reset Password</strong>
@@ -1708,9 +1773,21 @@ const handleDownloadLogs = async () => {
 
                   {/* --- NEW: FORGOT PASSWORD BUTTON --- */}
                   {!isRegistering && (
-                    <button style={{ backgroundColor: "transparent", border: "none", color: "#888", fontSize: "11px", cursor: "pointer", marginTop: "0px", textDecoration: "underline" }} onClick={() => setIsForgotPassword(true)}>
-                      Forgot your password?
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
+                    <button 
+                        style={{ backgroundColor: "transparent", border: "none", color: "#888", fontSize: "10px", cursor: "pointer", textDecoration: "underline" }} 
+                        onClick={() => setIsForgotPassword(true)}
+                    >
+                      Forgot Password?
                     </button>
+                    
+                    <button 
+                        style={{ backgroundColor: "transparent", border: "none", color: "#888", fontSize: "10px", cursor: "pointer", textDecoration: "underline" }} 
+                        onClick={() => setIsResending(true)}
+                    >
+                      Resend Verification
+                    </button>
+                  </div>
                   )}
                 </div>
               )
