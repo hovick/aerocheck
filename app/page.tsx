@@ -614,7 +614,7 @@ export default function Home() {
   };
 
   const handleExport = async (format: 'kml' | 'dxf') => {
-    const res = await fetch(`${API_BASE}/export/${format}/${selectedAnalysisAirport}`, {
+    const res = await fetch(`${API_BASE}/export/kml?airport_name=${encodeURIComponent(selectedAnalysisAirport)}`, {
       headers: getAuthHeaders() // Inject our Premium JWT Token!
     });
     
