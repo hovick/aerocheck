@@ -17,7 +17,7 @@ export default function Home() {
   const inactiveTabBtn: React.CSSProperties = { flex: 1, padding: "10px", backgroundColor: "#ddd", color: "#555", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" };
   const createBtnStyle: React.CSSProperties = { marginTop: "15px", padding: "12px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "15px" };
   const [registerEmail, setRegisterEmail] = useState(""); // --- NEW ---
-  const [user, setUser] = useState<{id: number, username: string, email?: string, is_premium: boolean, max_airports: number} | null>(null);
+  const [user, setUser] = useState<{id: number, username: string, email?: string, is_premium: boolean, max_airports: number, ion_token: string} | null>(null);
   // YOUR Global Default Token (The one currently in useEffect)
   const DEFAULT_ION_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOTZmOGMwZC1kNTlkLTRkYWUtYWUxZC0wMzBlOWVlNmM3N2QiLCJpZCI6ODM2NDQsImlhdCI6MTY0NTY5NTMxN30.qUC3Y6wM0_bcbb73TLGH87Azql1ZDX5gM_7relGRRSg';
   const [editIonToken, setEditIonToken] = useState(""); // --- NEW ---
@@ -926,7 +926,7 @@ const handleDownloadLogs = async () => {
                   left: "5px",
                   backgroundColor: "#0b1b3d", 
                   color: "#ffffff",
-                  padding: "10px 100px",
+                  padding: "10px 130px",
                   borderRadius: "4px",
                   fontWeight: "900",
                   letterSpacing: "3px",
@@ -1230,13 +1230,23 @@ const handleDownloadLogs = async () => {
             {activeTab === "analyze" && (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 
-                {/* --- NEW: Google 3D Tiles Checkbox (Only if Custom Token Exists) --- */}
-                {currentOwnerToken && (
+                {/* --- UPDATED: Show Checkbox if User has Token OR Airport Owner has Token --- */}
+                {(currentOwnerToken || (user?.is_premium && user?.ion_token)) && (
                   <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "5px", color: "#333", cursor: "pointer", marginLeft: "15px" }}>
                     <input 
                       type="checkbox" 
                       checked={showGoogleTiles} 
-                      onChange={e => setShowGoogleTiles(e.target.checked)} 
+                      onChange={e => {
+                        const isChecked = e.target.checked;
+                        setShowGoogleTiles(isChecked);
+                        
+                        // If checking the box, ensure we are using the correct token
+                        if (isChecked) {
+                            // Priority: Specific Airport Owner Token -> My Personal Token -> Default
+                            const tokenToUse = currentOwnerToken || user?.ion_token || DEFAULT_ION_TOKEN;
+                            Cesium.Ion.defaultAccessToken = tokenToUse;
+                        }
+                      }} 
                     />
                     <span style={{ fontWeight: "bold", color: "#4285F4" }}>G</span>oogle 3D Tiles
                   </label>
