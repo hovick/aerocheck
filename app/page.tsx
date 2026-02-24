@@ -18,6 +18,9 @@ export default function Home() {
   const createBtnStyle: React.CSSProperties = { marginTop: "15px", padding: "12px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "15px" };
   const [registerEmail, setRegisterEmail] = useState(""); // --- NEW ---
   const [user, setUser] = useState<{id: number, username: string, email?: string, is_premium: boolean, max_airports: number} | null>(null);
+  // YOUR Global Default Token (The one currently in useEffect)
+  const DEFAULT_ION_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOTZmOGMwZC1kNTlkLTRkYWUtYWUxZC0wMzBlOWVlNmM3N2QiLCJpZCI6ODM2NDQsImlhdCI6MTY0NTY5NTMxN30.qUC3Y6wM0_bcbb73TLGH87Azql1ZDX5gM_7relGRRSg';
+  const [editIonToken, setEditIonToken] = useState(""); // --- NEW ---
   // --- Profile Settings State ---
   const [logStartDate, setLogStartDate] = useState("");
   const [logEndDate, setLogEndDate] = useState("");
@@ -166,7 +169,8 @@ export default function Home() {
       body: JSON.stringify({
         username: editUsername || null,
         email: editEmail || null,
-        password: editPassword || null
+        password: editPassword || null,
+        ion_token: editIonToken || null
       })
     });
 
@@ -225,7 +229,7 @@ export default function Home() {
             setUser(data);
             setEditUsername(data.username || "");
             setEditEmail(data.email || "");
-            
+            setEditIonToken(data.ion_token || "");
             // Fetch Surfaces
             fetch(`${API_BASE}/get-surfaces`, { headers: { "Authorization": `Bearer ${token}` } })
               .then(r => r.json()).then(surfs => setSavedSurfaces(surfs));
@@ -932,13 +936,27 @@ const handleDownloadLogs = async () => {
                 Activate Generic Color Mode (Blueprint)
               </label>
               {/* --- NEW: 3D Buildings Checkbox --- */}
-              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "5px", color: "#333", cursor: "pointer" }}>
+              <label 
+                style={{ 
+                  fontSize: "12px", 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: "5px", 
+                  // Grey out text if not premium
+                  color: user?.is_premium ? "#333" : "#999", 
+                  // Show "not-allowed" circle cursor for free users
+                  cursor: user?.is_premium ? "pointer" : "not-allowed" 
+                }}
+                title={!user?.is_premium ? "Upgrade to Premium to view 3D buildings" : ""}
+              >
                 <input 
                   type="checkbox" 
                   checked={showBuildings} 
                   onChange={e => setShowBuildings(e.target.checked)} 
+                  // Physically disable the box for free users
+                  disabled={!user?.is_premium} 
                 />
-                Show 3D Buildings
+                Show 3D Buildings {!user?.is_premium && <span style={{color: "gold"}}>★</span>}
               </label>
             </div>
 
@@ -1187,15 +1205,41 @@ const handleDownloadLogs = async () => {
                             setPubSurfQuery(s.airport_name); 
                             setPubSurfResults([]); 
                             
-                            // Fetch ALL surfaces for this airport to auto-draw them!
                             try {
+                              // Fetch Surfaces + The Owner's Custom Token
                               const res = await fetch(`${API_BASE}/airports/${s.owner_id}/${encodeURIComponent(s.airport_name)}`);
                               if (res.ok) {
-                                const airportSurfaces = await res.json();
-                                handleDrawSurface(airportSurfaces); // <--- FIXED: No more forEach loop here!
+                                const data = await res.json();
+                                
+                                // --- THE TOKEN SWAP ---
+                                if (data.ion_token) {
+                                  console.log("Switching to CAA Custom Ion Token...");
+                                  Cesium.Ion.defaultAccessToken = data.ion_token;
+                                } else {
+                                  console.log("Using Default Altitude Nexus Token.");
+                                  Cesium.Ion.defaultAccessToken = DEFAULT_ION_TOKEN;
+                                }
+
+                                // If 3D Buildings are currently ON, we must reload them to use the new token!
+                                if (showBuildings && viewerRef.current) {
+                                  // 1. Remove existing buildings
+                                  if (buildingsRef.current) {
+                                    viewerRef.current.scene.primitives.remove(buildingsRef.current);
+                                    buildingsRef.current = null;
+                                  }
+                                  // 2. Re-fetch with new token
+                                  try {
+                                    const buildings = await Cesium.createOsmBuildingsAsync();
+                                    viewerRef.current.scene.primitives.add(buildings);
+                                    buildingsRef.current = buildings;
+                                  } catch (err) { console.error("Failed to reload buildings with new token", err); }
+                                }
+
+                                // Draw the surfaces
+                                handleDrawSurface(data.surfaces); 
                               }
                             } catch (err) {
-                              console.error("Could not load airport geometry.");
+                              console.error("Could not load airport geometry or token.");
                             }
                           }}
                           style={{ padding: "8px", borderBottom: "1px solid #eee", cursor: "pointer", fontSize: "12px" }}
@@ -1624,6 +1668,19 @@ const handleDownloadLogs = async () => {
                         <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="New Username" />
                         <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email Address (e.g. caa@gov.uk)" />
                         <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
+                        {/* --- NEW: CESIUM ION TOKEN INPUT --- */}
+                        <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: "1px dashed #ccc" }}>
+                          <label style={{ fontSize: "10px", fontWeight: "bold", color: "#666" }}>Custom Cesium Ion Token (Optional)</label>
+                          <input 
+                            style={{...inputStyle, padding: "6px", fontSize: "12px", fontFamily: "monospace", backgroundColor: "#f0f0f0"}} 
+                            value={editIonToken} 
+                            onChange={e => setEditIonToken(e.target.value)} 
+                            placeholder="eyJhbGciOiJIUzI1NiIsIn..." 
+                          />
+                          <p style={{ fontSize: "10px", color: "#888", margin: "2px 0 0 0" }}>
+                            If provided, users viewing your surfaces will use this token for 3D assets.
+                          </p>
+                        </div>
                         <button 
                           onClick={handleUpdateProfile} 
                           style={{...activeTabBtn, backgroundColor: "#0b1b3d", padding: "8px", fontSize: "12px", marginTop: "5px"}}
