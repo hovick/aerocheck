@@ -706,9 +706,13 @@ export default function Home() {
 
       // 1. Get Earth Coordinates
       // We try to pick the 3D Tiles/Terrain first, then fallback to Ellipsoid
+      // 1. Get Earth Coordinates
       const ray = viewer.camera.getPickRay(click.position);
-      const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
+      
+      // --- FIX: Guard against undefined ray ---
+      if (!ray) return; 
 
+      const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
       if (!cartesian) return;
 
       // --- POINT TOOL ---
