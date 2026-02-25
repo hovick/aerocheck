@@ -1792,13 +1792,13 @@ const handleDownloadLogs = async () => {
                       <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
                       
                       </div>
-                      <button 
+                    </div>
+                    <button 
                         onClick={handleDownloadLogs} 
                         style={{ ...activeTabBtn, backgroundColor: "#176429", padding: "6px 12px", fontSize: "12px", height: "31px", flex: "0 1 auto" }}
                       >
                         📥 Download CSV
                       </button>
-                    </div>
                   </div>
                 )}
               </div>
