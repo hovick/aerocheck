@@ -68,7 +68,7 @@ export default function Home() {
   // Public Surface Search State
   const [pubSurfQuery, setPubSurfQuery] = useState("");
   const [pubSurfResults, setPubSurfResults] = useState<any[]>([]);
-  const [airportName, setAirportName] = useState("London Heathrow (EGLL)");
+  const [airportName, setAirportName] = useState("");
   // Open Source Data Search State
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -78,7 +78,7 @@ export default function Home() {
   const [batchResults, setBatchResults] = useState<any[]>([]);
   // RNAV State
   const [rnavMode, setRnavMode] = useState("RNP APCH");
-  const [altUnit, setAltUnit] = useState("m"); // "m" or "ft"
+  const [altUnit, setAltUnit] = useState("ft"); // "m" or "ft"
   const [useCustomRnav, setUseCustomRnav] = useState(false);
   
   // Custom Overrides (NM by default for XTT/ATT, Meters for SW?)
@@ -90,11 +90,11 @@ export default function Home() {
     mapt_xtt: 0.3, mapt_att: 0.24, mapt_sw: 0.95
   });
   // Intermediate Fix
-  const [ifPos, setIfPos] = useState({ lat: 51.5, lon: -0.6, alt: 600 }); 
+  const [ifPos, setIfPos] = useState({ lat: 10.260051, lon: -75.522081, alt: 600 }); 
   // Final Approach Fix
-  const [fafPos, setFafPos] = useState({ lat: 51.48, lon: -0.5, alt: 600 });
+  const [fafPos, setFafPos] = useState({ lat: 10.349778, lon: -75.517365, alt: 1640 });
   // Missed Approach Point
-  const [maptPos, setMaptPos] = useState({ lat: 51.465, lon: -0.44, alt: 100 });
+  const [maptPos, setMaptPos] = useState({ lat: 10.430861, lon: -75.513378, alt: 830 });
 
   // NAVAID specific state
   const [navType, setNavType] = useState("CVOR");
@@ -104,11 +104,11 @@ export default function Home() {
   const isDirectional = ["ILS_LLZ", "ILS_GP", "MLS"].includes(navType);
 
   // Define State
-  const [surfName, setSurfName] = useState("Runway 09/27");
+  const [surfName, setSurfName] = useState("");
   const [family, setFamily] = useState("OLS"); // OLS, OAS, VSS, etc.
-  const [t1, setT1] = useState({ lat: 51.464901, lon: -0.486772, alt: 22.86 });
-  const [t2, setT2] = useState({ lat: 51.465, lon: -0.434075, alt: 23.47 });
-  const [arpAlt, setArpAlt] = useState(25.3);
+  const [t1, setT1] = useState({ lat: 10.430861, lon: -75.513378, alt: 2.13 });
+  const [t2, setT2] = useState({ lat: 10.452475, lon: -75.512492, alt: 2.13 });
+  const [arpAlt, setArpAlt] = useState(1.22);
   const [runwayType, setRunwayType] = useState("precision");
   
   // VSS specific state
