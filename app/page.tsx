@@ -78,8 +78,19 @@ export default function Home() {
   const [batchResults, setBatchResults] = useState<any[]>([]);
   // RNAV State
   const [rnavMode, setRnavMode] = useState("RNP APCH");
+  const [altUnit, setAltUnit] = useState("m"); // "m" or "ft"
+  const [useCustomRnav, setUseCustomRnav] = useState(false);
+  
+  // Custom Overrides (NM by default for XTT/ATT, Meters for SW?)
+  // Let's assume standard units: NM for XTT/ATT, NM or M for SW? 
+  // PANS-OPS tables usually give km or NM. Let's use NM to be safe and consistent.
+  const [rnavOverrides, setRnavOverrides] = useState({
+    if_xtt: 1.0, if_att: 0.8, if_sw: 2.5,
+    faf_xtt: 1.0, faf_att: 0.8, faf_sw: 2.0,
+    mapt_xtt: 0.3, mapt_att: 0.3, mapt_sw: 1.5
+  });
   // Intermediate Fix
-  const [ifPos, setIfPos] = useState({ lat: 51.5, lon: -0.6}); 
+  const [ifPos, setIfPos] = useState({ lat: 51.5, lon: -0.6, alt: 600 }); 
   // Final Approach Fix
   const [fafPos, setFafPos] = useState({ lat: 51.48, lon: -0.5, alt: 600 });
   // Missed Approach Point
@@ -801,11 +812,17 @@ const handleDownloadLogs = async () => {
         vss_params: family === "VSS" ? vssParams : null,
         adg: family === "OFZ" ? adg : null,
         rnav_params: family === "RNAV" ? {
-          mode: rnavMode,
-          if_lat: ifPos.lat, if_lon: ifPos.lon,
-          faf_lat: fafPos.lat, faf_lon: fafPos.lon, faf_alt: fafPos.alt,
-          mapt_lat: maptPos.lat, mapt_lon: maptPos.lon, mapt_alt: maptPos.alt
-        } : null,
+        mode: rnavMode,
+        alt_unit: altUnit,
+        if_lat: ifPos.lat, if_lon: ifPos.lon, if_alt: ifPos.alt,
+        faf_lat: fafPos.lat, faf_lon: fafPos.lon, faf_alt: fafPos.alt,
+        mapt_lat: maptPos.lat, mapt_lon: maptPos.lon, mapt_alt: maptPos.alt,
+        
+        use_custom_values: useCustomRnav,
+        if_xtt: rnavOverrides.if_xtt, if_att: rnavOverrides.if_att, if_sw: rnavOverrides.if_sw,
+        faf_xtt: rnavOverrides.faf_xtt, faf_att: rnavOverrides.faf_att, faf_sw: rnavOverrides.faf_sw,
+        mapt_xtt: rnavOverrides.mapt_xtt, mapt_att: rnavOverrides.mapt_att, mapt_sw: rnavOverrides.mapt_sw,
+    } : null,
         navaid_params: family === "NAVAID" ? {
             n_type: navType,
             lat: navCoord.lat,
@@ -1157,36 +1174,78 @@ const handleDownloadLogs = async () => {
                 {/* --- DYNAMIC RNAV FIELDS --- */}
                 {family === "RNAV" && (
                   <div style={{ backgroundColor: "#e9ecef", padding: "10px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={labelStyle}>Procedure Specification</label>
-                    <select style={inputStyle} value={rnavMode} onChange={e => setRnavMode(e.target.value)}>
-                      <option value="RNP APCH">RNP APCH (LNAV/VNAV, LPV)</option>
-                      <option value="RNAV 1">RNAV 1 / Basic RNP-1</option>
-                      <option value="RNAV 2">RNAV 2</option>
-                    </select>
                     
-                    <p style={{fontSize: "10px", color: "#555", margin: 0}}>
-                        * Automatically calculates XTT/ATT and Area Semi-widths based on selection.
-                    </p>
+                    <div style={rowStyle}>
+                        <div style={{flex:1}}>
+                            <label style={labelStyle}>Mode</label>
+                            <select style={inputStyle} value={rnavMode} onChange={e => setRnavMode(e.target.value)}>
+                              <option value="RNP APCH">RNP APCH</option>
+                              <option value="Advanced RNP">Advanced RNP</option>
+                            </select>
+                        </div>
+                        <div style={{flex:0.5}}>
+                            <label style={labelStyle}>Alt Unit</label>
+                            <select style={inputStyle} value={altUnit} onChange={e => setAltUnit(e.target.value)}>
+                              <option value="m">Meters</option>
+                              <option value="ft">Feet</option>
+                            </select>
+                        </div>
+                    </div>
 
                     <label style={{...labelStyle, color: "#d35400"}}>1. Intermediate Fix (IF)</label>
                     <div style={rowStyle}>
                         <input style={numInputStyle} placeholder="Lat" type="number" value={ifPos.lat} onChange={e => setIfPos({...ifPos, lat: +e.target.value})} />
                         <input style={numInputStyle} placeholder="Lon" type="number" value={ifPos.lon} onChange={e => setIfPos({...ifPos, lon: +e.target.value})} />
+                        <input style={numInputStyle} placeholder={`Alt (${altUnit})`} type="number" value={ifPos.alt} onChange={e => setIfPos({...ifPos, alt: +e.target.value})} />
                     </div>
 
                     <label style={{...labelStyle, color: "#27ae60"}}>2. Final Approach Fix (FAF)</label>
                     <div style={rowStyle}>
                         <input style={numInputStyle} placeholder="Lat" type="number" value={fafPos.lat} onChange={e => setFafPos({...fafPos, lat: +e.target.value})} />
                         <input style={numInputStyle} placeholder="Lon" type="number" value={fafPos.lon} onChange={e => setFafPos({...fafPos, lon: +e.target.value})} />
-                        <input style={numInputStyle} placeholder="Alt (m)" type="number" value={fafPos.alt} onChange={e => setFafPos({...fafPos, alt: +e.target.value})} />
+                        <input style={numInputStyle} placeholder={`Alt (${altUnit})`} type="number" value={fafPos.alt} onChange={e => setFafPos({...fafPos, alt: +e.target.value})} />
                     </div>
 
                     <label style={{...labelStyle, color: "#c0392b"}}>3. Missed Approach Point (MAPt)</label>
                     <div style={rowStyle}>
                         <input style={numInputStyle} placeholder="Lat" type="number" value={maptPos.lat} onChange={e => setMaptPos({...maptPos, lat: +e.target.value})} />
                         <input style={numInputStyle} placeholder="Lon" type="number" value={maptPos.lon} onChange={e => setMaptPos({...maptPos, lon: +e.target.value})} />
-                        <input style={numInputStyle} placeholder="MDA/DA (m)" type="number" value={maptPos.alt} onChange={e => setMaptPos({...maptPos, alt: +e.target.value})} />
+                        <input style={numInputStyle} placeholder={`Alt (${altUnit})`} type="number" value={maptPos.alt} onChange={e => setMaptPos({...maptPos, alt: +e.target.value})} />
                     </div>
+
+                    <label style={{...labelStyle, display: "flex", alignItems: "center", gap: "5px", marginTop: "10px", cursor: "pointer"}}>
+                        <input type="checkbox" checked={useCustomRnav} onChange={e => setUseCustomRnav(e.target.checked)} />
+                        Manual Override (XTT / ATT / Semi-width in NM)
+                    </label>
+
+                    {useCustomRnav && (
+                        <div style={{border: "1px solid #ccc", padding: "5px", borderRadius: "4px", backgroundColor: "#fff"}}>
+                            <div style={{display:"flex", gap:"5px", fontSize:"10px", fontWeight:"bold", marginBottom:"5px"}}>
+                                <span style={{flex:1}}>Fix</span><span style={{flex:1}}>XTT</span><span style={{flex:1}}>ATT</span><span style={{flex:1}}>SW</span>
+                            </div>
+                            {/* IF Override */}
+                            <div style={{display:"flex", gap:"5px", marginBottom:"3px"}}>
+                                <span style={{flex:1, fontSize:"11px"}}>IF</span>
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.if_xtt} onChange={e => setRnavOverrides({...rnavOverrides, if_xtt: +e.target.value})} />
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.if_att} onChange={e => setRnavOverrides({...rnavOverrides, if_att: +e.target.value})} />
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.if_sw} onChange={e => setRnavOverrides({...rnavOverrides, if_sw: +e.target.value})} />
+                            </div>
+                            {/* FAF Override */}
+                            <div style={{display:"flex", gap:"5px", marginBottom:"3px"}}>
+                                <span style={{flex:1, fontSize:"11px"}}>FAF</span>
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.faf_xtt} onChange={e => setRnavOverrides({...rnavOverrides, faf_xtt: +e.target.value})} />
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.faf_att} onChange={e => setRnavOverrides({...rnavOverrides, faf_att: +e.target.value})} />
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.faf_sw} onChange={e => setRnavOverrides({...rnavOverrides, faf_sw: +e.target.value})} />
+                            </div>
+                            {/* MAPt Override */}
+                            <div style={{display:"flex", gap:"5px"}}>
+                                <span style={{flex:1, fontSize:"11px"}}>MAPt</span>
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.mapt_xtt} onChange={e => setRnavOverrides({...rnavOverrides, mapt_xtt: +e.target.value})} />
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.mapt_att} onChange={e => setRnavOverrides({...rnavOverrides, mapt_att: +e.target.value})} />
+                                <input style={{...numInputStyle, padding:"2px"}} type="number" value={rnavOverrides.mapt_sw} onChange={e => setRnavOverrides({...rnavOverrides, mapt_sw: +e.target.value})} />
+                            </div>
+                        </div>
+                    )}
                   </div>
                 )}
 
@@ -1668,13 +1727,14 @@ const handleDownloadLogs = async () => {
                         />
                       </div>
                       <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
+                      
+                      </div>
                       <button 
                         onClick={handleDownloadLogs} 
                         style={{ ...activeTabBtn, backgroundColor: "#176429", padding: "6px 12px", fontSize: "12px", height: "31px", flex: "0 1 auto" }}
                       >
                         📥 Download CSV
                       </button>
-                      </div>
                     </div>
                   </div>
                 )}
