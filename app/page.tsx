@@ -41,6 +41,8 @@ export default function Home() {
   const [loginInput, setLoginInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+  const [expandedSurfaceId, setExpandedSurfaceId] = useState<string | null>(null);
+  
   // --- Forgot Password State ---
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -115,6 +117,37 @@ export default function Home() {
   const [vssParams, setVssParams] = useState({ stripWidth: 150, oca: 100, descentAngle: 3.0 });
   // OFZ specific state
   const [adg, setAdg] = useState("IV");
+  const handleDeleteComponent = async (surfaceId: string, componentName: string) => {
+    if (!confirm(`Delete only the "${componentName}" layer?`)) return;
+
+    try {
+      // Use query parameter for the component name to handle spaces/special chars safely
+      const res = await fetch(`${API_BASE}/surface/${surfaceId}/component?component_name=${encodeURIComponent(componentName)}`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        return alert(data.detail || "Failed to delete component");
+      }
+
+      // Update Local State without reloading
+      setSavedSurfaces(prev => prev.map(s => {
+        if (s.id === surfaceId) {
+            // Remove the specific geometry from the local cached object
+            return {
+                ...s,
+                geometry: s.geometry.filter((g: any) => g.name !== componentName)
+            };
+        }
+        return s;
+      }));
+      
+    } catch (err) {
+      alert("Network error deleting component.");
+    }
+  };
 
   // Analyze State
   const [savedSurfaces, setSavedSurfaces] = useState<any[]>([]);
@@ -814,7 +847,7 @@ const handleDownloadLogs = async () => {
         rnav_params: family === "RNAV" ? {
         mode: rnavMode,
         alt_unit: altUnit,
-        if_lat: ifPos.lat, if_lon: ifPos.lon, if_alt: ifPos.alt,
+        if_lat: ifPos.lat, if_lon: ifPos.lon,
         faf_lat: fafPos.lat, faf_lon: fafPos.lon, faf_alt: fafPos.alt,
         mapt_lat: maptPos.lat, mapt_lon: maptPos.lon, mapt_alt: maptPos.alt,
         
@@ -1196,7 +1229,6 @@ const handleDownloadLogs = async () => {
                     <div style={rowStyle}>
                         <input style={numInputStyle} placeholder="Lat" type="number" value={ifPos.lat} onChange={e => setIfPos({...ifPos, lat: +e.target.value})} />
                         <input style={numInputStyle} placeholder="Lon" type="number" value={ifPos.lon} onChange={e => setIfPos({...ifPos, lon: +e.target.value})} />
-                        <input style={numInputStyle} placeholder={`Alt (${altUnit})`} type="number" value={ifPos.alt} onChange={e => setIfPos({...ifPos, alt: +e.target.value})} />
                     </div>
 
                     <label style={{...labelStyle, color: "#27ae60"}}>2. Final Approach Fix (FAF)</label>
@@ -1668,20 +1700,51 @@ const handleDownloadLogs = async () => {
                           Contains {s.geometry.length} 3D geometric meshes.
                         </div>
                         
-                        <div style={rowStyle}>
+                        {/* --- DASHBOARD CARD ACTIONS --- */}
+                        <div style={{...rowStyle, marginTop: "8px"}}>
                           <button 
                             style={{...activeTabBtn, backgroundColor: "#0053ac", fontSize: "11px", padding: "6px"}} 
                             onClick={() => handleDrawSurface(s)}
                           >
-                            🗺️ Draw on Map
+                            🗺️ Draw
                           </button>
+                          
+                          {/* NEW: Edit/Expand Button */}
+                          <button 
+                            style={{...activeTabBtn, backgroundColor: "#6c757d", fontSize: "11px", padding: "6px"}} 
+                            onClick={() => setExpandedSurfaceId(expandedSurfaceId === s.id ? null : s.id)}
+                          >
+                            {expandedSurfaceId === s.id ? "▲ Close" : "▼ Components"}
+                          </button>
+
                           <button 
                             style={{...activeTabBtn, backgroundColor: "#ae2936", flex: 0.4, fontSize: "11px", padding: "6px"}} 
                             onClick={() => handleDeleteSurface(s.id)}
                           >
-                            🗑️ Delete
+                            🗑️ All
                           </button>
                         </div>
+
+                        {/* --- EXPANDED COMPONENT LIST --- */}
+                        {expandedSurfaceId === s.id && (
+                            <div style={{ marginTop: "10px", padding: "5px", backgroundColor: "#fff", border: "1px solid #eee", borderRadius: "4px" }}>
+                                <small style={{ fontWeight: "bold", color: "#555" }}>Individual Layers:</small>
+                                <ul style={{ listStyle: "none", padding: 0, margin: "5px 0 0 0" }}>
+                                    {s.geometry.map((geo: any, idx: number) => (
+                                        <li key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f0f0f0", padding: "4px 0", fontSize: "11px" }}>
+                                            <span style={{ color: "#333" }}>{geo.name}</span>
+                                            <button 
+                                                onClick={() => handleDeleteComponent(s.id, geo.name)}
+                                                style={{ border: "none", background: "none", color: "red", cursor: "pointer", fontWeight: "bold" }}
+                                                title="Delete this layer only"
+                                            >
+                                                ✖
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                       </div>
                     ))}
                   </div>
