@@ -21,6 +21,18 @@ export default function Home() {
   // YOUR Global Default Token (The one currently in useEffect)
   const DEFAULT_ION_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwOTZmOGMwZC1kNTlkLTRkYWUtYWUxZC0wMzBlOWVlNmM3N2QiLCJpZCI6ODM2NDQsImlhdCI6MTY0NTY5NTMxN30.qUC3Y6wM0_bcbb73TLGH87Azql1ZDX5gM_7relGRRSg';
   const [editIonToken, setEditIonToken] = useState(""); // --- NEW ---
+  // --- QUICK TOOLS STATE ---
+  const [showTools, setShowTools] = useState(true); // Toggle the widget visibility
+  const [activeTool, setActiveTool] = useState<"none" | "ruler" | "point">("none");
+  const [toolTip, setToolTip] = useState(""); // Instructions (e.g. "Click Start Point")
+  
+  // Data for the tools
+  const [rulerPts, setRulerPts] = useState<Cesium.Cartesian3[]>([]);
+  const [measureResult, setMeasureResult] = useState<{ m: number, nm: number } | null>(null);
+  const [pointResult, setPointResult] = useState<{ lat: number, lon: number, alt: number } | null>(null);
+
+  // Ref to store tool entities so we can clean them up easily
+  const toolsDataSourceRef = useRef<Cesium.CustomDataSource | null>(null);
   // ... inside Home() ...
   const [showGoogleTiles, setShowGoogleTiles] = useState(false); // Checkbox state
   const googleTilesRef = useRef<any>(null); // Memory reference to the tileset
@@ -97,6 +109,16 @@ export default function Home() {
   const [fafPos, setFafPos] = useState({ lat: 10.349778, lon: -75.517365, alt: 1640 });
   // Missed Approach Point
   const [maptPos, setMaptPos] = useState({ lat: 10.430861, lon: -75.513378, alt: 830 });
+  const clearTools = () => {
+    setActiveTool("none");
+    setRulerPts([]);
+    setMeasureResult(null);
+    setPointResult(null);
+    setToolTip("");
+    if (toolsDataSourceRef.current) {
+        toolsDataSourceRef.current.entities.removeAll();
+    }
+  };
 
   // NAVAID specific state
   const [navType, setNavType] = useState("CVOR");
@@ -663,6 +685,114 @@ export default function Home() {
     }
   }, [isGenericMode]);
 
+  // --- TOOL INTERACTION HANDLER ---
+  useEffect(() => {
+    if (!viewerRef.current) return;
+    const viewer = viewerRef.current;
+
+    // Create a data source for our tool drawings if it doesn't exist
+    if (!toolsDataSourceRef.current) {
+      const ds = new Cesium.CustomDataSource("tools");
+      viewer.dataSources.add(ds);
+      toolsDataSourceRef.current = ds;
+    }
+    const toolsLayer = toolsDataSourceRef.current;
+
+    // Setup Click Handler
+    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+
+    handler.setInputAction((click: any) => {
+      if (activeTool === "none") return;
+
+      // 1. Get Earth Coordinates
+      // We try to pick the 3D Tiles/Terrain first, then fallback to Ellipsoid
+      const ray = viewer.camera.getPickRay(click.position);
+      const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
+
+      if (!cartesian) return;
+
+      // --- POINT TOOL ---
+      if (activeTool === "point") {
+        toolsLayer.entities.removeAll(); // Clear previous
+        
+        // Convert to Lat/Lon
+        const carto = Cesium.Cartographic.fromCartesian(cartesian);
+        const lat = parseFloat(Cesium.Math.toDegrees(carto.latitude).toFixed(5));
+        const lon = parseFloat(Cesium.Math.toDegrees(carto.longitude).toFixed(5));
+        const alt = parseFloat(carto.height.toFixed(1));
+
+        // Draw Dot
+        toolsLayer.entities.add({
+          position: cartesian,
+          point: { pixelSize: 10, color: Cesium.Color.CYAN, outlineColor: Cesium.Color.BLACK, outlineWidth: 2 },
+          label: {
+            text: `Lat: ${lat}\nLon: ${lon}\nAlt: ${alt}m`,
+            showBackground: true,
+            font: "14px monospace",
+            horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            pixelOffset: new Cesium.Cartesian2(10, -10),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY // Always on top
+          }
+        });
+
+        setPointResult({ lat, lon, alt });
+      }
+
+      // --- RULER TOOL ---
+      if (activeTool === "ruler") {
+        const newPts = [...rulerPts, cartesian];
+        
+        // Draw the point
+        toolsLayer.entities.add({
+            position: cartesian,
+            point: { pixelSize: 8, color: Cesium.Color.YELLOW, outlineColor: Cesium.Color.BLACK, outlineWidth: 2 }
+        });
+
+        if (newPts.length === 1) {
+            setToolTip("Click End Point");
+            setRulerPts(newPts);
+        } else if (newPts.length === 2) {
+            // Draw Line
+            toolsLayer.entities.add({
+                polyline: {
+                    positions: newPts,
+                    width: 3,
+                    material: Cesium.Color.YELLOW,
+                    depthFailMaterial: Cesium.Color.YELLOW // See through terrain
+                }
+            });
+
+            // Calculate Distance
+            const distM = Cesium.Cartesian3.distance(newPts[0], newPts[1]);
+            const distNM = distM / 1852.0;
+            
+            setMeasureResult({ m: parseFloat(distM.toFixed(1)), nm: parseFloat(distNM.toFixed(2)) });
+            setToolTip("Distance Measured. Click 'Reset' to start over.");
+            setRulerPts(newPts); // Lock it
+            
+            // Add Label at midpoint
+            const midpoint = Cesium.Cartesian3.lerp(newPts[0], newPts[1], 0.5, new Cesium.Cartesian3());
+            toolsLayer.entities.add({
+                position: midpoint,
+                label: {
+                    text: `${(distM/1000).toFixed(2)} km\n${distNM.toFixed(2)} NM`,
+                    showBackground: true,
+                    font: "bold 14px sans-serif",
+                    disableDepthTestDistance: Number.POSITIVE_INFINITY
+                }
+            });
+        }
+      }
+
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    // Cleanup when tool changes
+    return () => {
+      handler.destroy();
+    };
+  }, [activeTool, rulerPts]); // Re-bind when state changes
+
   // --- PUBLIC SURFACE SEARCH LOGIC ---
   const handleSearchPublicSurfaces = async (query: string) => {
     setPubSurfQuery(query);
@@ -1015,6 +1145,113 @@ const handleDownloadLogs = async () => {
           >
               ALTITUDE NEXUS
           </a>
+
+          {/* --- QUICK TOOLS WIDGET (TOP RIGHT) --- */}
+      <div style={{
+        position: "absolute",
+        top: "20px",
+        right: "20px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end", // Align to right
+        gap: "10px",
+        zIndex: 90 // Above map
+      }}>
+        
+        {/* Toggle Button (Small Icon) */}
+        <button 
+          onClick={() => setShowTools(!showTools)}
+          style={{
+            width: "40px", height: "40px", borderRadius: "50%",
+            backgroundColor: "white", border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+            cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center"
+          }}
+          title="Toggle Tools"
+        >
+          {showTools ? "✕" : "🛠️"}
+        </button>
+
+        {/* The Tool Panel */}
+        {showTools && (
+          <div style={{
+            backgroundColor: "rgba(255, 255, 255, 0.95)",
+            padding: "15px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            width: "220px", display: "flex", flexDirection: "column", gap: "10px"
+          }}>
+            <strong style={{fontSize: "12px", color: "#555", textTransform: "uppercase"}}>Quick Tools</strong>
+            
+            {/* Tool Buttons */}
+            <div style={{display: "flex", gap: "5px"}}>
+                <button 
+                    style={{
+                        flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #ccc",
+                        backgroundColor: activeTool === "ruler" ? "#0b1b3d" : "white",
+                        color: activeTool === "ruler" ? "white" : "#333",
+                        cursor: "pointer", fontSize: "12px", fontWeight: "bold"
+                    }}
+                    onClick={() => {
+                        clearTools();
+                        setActiveTool("ruler");
+                        setToolTip("Click Start Point");
+                    }}
+                >
+                    📏 Ruler
+                </button>
+                <button 
+                    style={{
+                        flex: 1, padding: "8px", borderRadius: "4px", border: "1px solid #ccc",
+                        backgroundColor: activeTool === "point" ? "#0b1b3d" : "white",
+                        color: activeTool === "point" ? "white" : "#333",
+                        cursor: "pointer", fontSize: "12px", fontWeight: "bold"
+                    }}
+                    onClick={() => {
+                        clearTools();
+                        setActiveTool("point");
+                        setToolTip("Click any point");
+                    }}
+                >
+                    📍 Point
+                </button>
+            </div>
+
+            {/* Instructions / Status */}
+            {activeTool !== "none" && (
+                <div style={{fontSize: "11px", color: "#666", fontStyle: "italic", textAlign: "center"}}>
+                    {toolTip}
+                </div>
+            )}
+
+            {/* Results Display */}
+            {activeTool === "ruler" && measureResult && (
+                <div style={{backgroundColor: "#f0f8ff", padding: "8px", borderRadius: "4px", fontSize: "12px", border: "1px solid #bde0fe"}}>
+                    <div><strong>Dist (m):</strong> {measureResult.m.toLocaleString()} m</div>
+                    <div><strong>Dist (NM):</strong> {measureResult.nm.toLocaleString()} NM</div>
+                </div>
+            )}
+
+            {activeTool === "point" && pointResult && (
+                <div style={{backgroundColor: "#f0f8ff", padding: "8px", borderRadius: "4px", fontSize: "12px", border: "1px solid #bde0fe"}}>
+                    <div><strong>Lat:</strong> {pointResult.lat}</div>
+                    <div><strong>Lon:</strong> {pointResult.lon}</div>
+                    <div><strong>Alt:</strong> {pointResult.alt} m</div>
+                </div>
+            )}
+
+            {/* Clear Button */}
+            {activeTool !== "none" && (
+                <button 
+                    onClick={clearTools}
+                    style={{
+                        padding: "5px", backgroundColor: "#e74c3c", color: "white", border: "none", 
+                        borderRadius: "4px", cursor: "pointer", fontSize: "11px"
+                    }}
+                >
+                    Clear / Stop
+                </button>
+            )}
+          </div>
+        )}
+      </div>
 
         {/* --- NEW: SIDEBAR TOGGLE ARROW --- */}
         <button 
