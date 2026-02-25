@@ -86,8 +86,8 @@ export default function Home() {
   // PANS-OPS tables usually give km or NM. Let's use NM to be safe and consistent.
   const [rnavOverrides, setRnavOverrides] = useState({
     if_xtt: 1.0, if_att: 0.8, if_sw: 2.5,
-    faf_xtt: 1.0, faf_att: 0.8, faf_sw: 2.0,
-    mapt_xtt: 0.3, mapt_att: 0.3, mapt_sw: 1.5
+    faf_xtt: 0.3, faf_att: 0.24, faf_sw: 1.45,
+    mapt_xtt: 0.3, mapt_att: 0.24, mapt_sw: 0.95
   });
   // Intermediate Fix
   const [ifPos, setIfPos] = useState({ lat: 51.5, lon: -0.6, alt: 600 }); 
