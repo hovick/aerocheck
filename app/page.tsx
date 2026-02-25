@@ -53,6 +53,7 @@ export default function Home() {
   const [loginInput, setLoginInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showAccountPanel, setShowAccountPanel] = useState(true); // Default to open so they see they need to login
   const [expandedSurfaceId, setExpandedSurfaceId] = useState<string | null>(null);
   
   // --- Forgot Password State ---
@@ -1153,7 +1154,7 @@ const handleDownloadLogs = async () => {
           {/* --- QUICK TOOLS WIDGET (TOP RIGHT) --- */}
       <div style={{
         position: "absolute",
-        top: "20px",
+        top: "50px",
         right: "20px",
         display: "flex",
         flexDirection: "column",
@@ -2094,184 +2095,223 @@ const handleDownloadLogs = async () => {
           </div>
 
           {/* --- ACCOUNT / LOGIN PANEL (Floating Box) --- */}
-          <div style={{ position: "absolute", bottom: "100px", right: "20px", width: "300px", backgroundColor: "rgba(255, 255, 255, 0.95)", padding: "15px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", border: "1px solid #ddd", zIndex: 10 }}>
-            {!user ? (
-              isResending ? (
-                // --- RESEND VERIFICATION PANEL ---
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <strong style={{ fontSize: "14px", color: "#333" }}>Resend Verification</strong>
-                  <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Enter your email to receive a new activation link.</p>
-                  
-                  <input 
-                    style={{...inputStyle, padding: "6px"}} 
-                    type="email" 
-                    value={resendEmailInput} 
-                    onChange={e => setResendEmailInput(e.target.value)} 
-                    placeholder="Registered Email Address" 
-                  />
-                  
-                  <button 
-                    style={{...activeTabBtn, padding: "8px", backgroundColor: "#17a2b8"}} 
-                    onClick={async () => {
-                      if (!resendEmailInput) return alert("Please enter your email");
+          {/* --- ACCOUNT / LOGIN PANEL (Floating Box) --- */}
+          <div style={{ 
+            position: "absolute", 
+            bottom: "100px", 
+            right: "20px", 
+            zIndex: 10,
+            display: "flex", 
+            flexDirection: "column", 
+            alignItems: "flex-end", // Aligns the toggle button to the right
+            gap: "10px"
+          }}>
+            
+            {/* 1. TOGGLE BUTTON (Visible Always) */}
+            <button 
+              onClick={() => setShowAccountPanel(!showAccountPanel)}
+              style={{
+                width: "40px", height: "40px", borderRadius: "50%",
+                backgroundColor: "white", border: "none", boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+                cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#0b1b3d"
+              }}
+              title={showAccountPanel ? "Minimize Panel" : "Show Account Panel"}
+            >
+              {showAccountPanel ? "✕" : (user ? "👤" : "🔑")}
+            </button>
+
+            {/* 2. THE PANEL CONTENT (Visible only when Toggled ON) */}
+            {showAccountPanel && (
+              <div style={{ 
+                width: "300px", 
+                backgroundColor: "rgba(255, 255, 255, 0.95)", 
+                padding: "15px", 
+                borderRadius: "8px", 
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)", 
+                border: "1px solid #ddd" 
+              }}>
+                {!user ? (
+                  isResending ? (
+                    // --- RESEND VERIFICATION PANEL ---
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <strong style={{ fontSize: "14px", color: "#333" }}>Resend Verification</strong>
+                      <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Enter your email to receive a new activation link.</p>
                       
-                      const res = await fetch(`${API_BASE}/resend-verification`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ email: resendEmailInput })
-                      });
+                      <input 
+                        style={{...inputStyle, padding: "6px"}} 
+                        type="email" 
+                        value={resendEmailInput} 
+                        onChange={e => setResendEmailInput(e.target.value)} 
+                        placeholder="Registered Email Address" 
+                      />
                       
-                      const data = await res.json();
-                      alert(data.message);
-                      setIsResending(false);
-                    }}
-                  >
-                    Send New Link
-                  </button>
-                  
-                  <button 
-                    style={{ backgroundColor: "transparent", border: "none", color: "#666", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} 
-                    onClick={() => setIsResending(false)}
-                  >
-                    Back to Login
-                  </button>
-                </div>
-              ) : isForgotPassword ? (
-                // --- FORGOT PASSWORD PANEL ---
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <strong style={{ fontSize: "14px", color: "#333" }}>Reset Password</strong>
-                  <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Enter your account email to receive a reset link.</p>
-                  
-                  <input style={{...inputStyle, padding: "6px"}} type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="Registered Email Address" />
-                  
-                  <button 
-                    style={{...activeTabBtn, padding: "8px", backgroundColor: "#007bff"}} 
-                    onClick={async () => {
-                      if (!forgotEmail) return alert("Please enter your email");
-                      await fetch(`${API_BASE}/forgot-password`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ email: forgotEmail })
-                      });
-                      alert("If that email exists in our system, a reset link has been sent.");
-                      setIsForgotPassword(false);
-                    }}
-                  >
-                    Send Reset Link
-                  </button>
-                  
-                  <button style={{ backgroundColor: "transparent", border: "none", color: "#666", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} onClick={() => setIsForgotPassword(false)}>
-                    Back to Login
-                  </button>
-                </div>
-              ) : (
-                // --- EXISTING LOGIN/REGISTER PANEL ---
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong style={{ fontSize: "14px", color: "#333" }}>{isRegistering ? "Register Account" : "Guest Mode"}</strong>
-                    {!isRegistering && <span style={{ fontSize: "10px", backgroundColor: "#e2e3e5", padding: "2px 6px", borderRadius: "4px" }}>Free</span>}
-                  </div>
-                  
-                  {!isRegistering && <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Create 1 surface as a guest, or log in.</p>}
-                  <hr style={{ margin: "5px 0", borderTop: "1px solid #ddd" }} />
-                  
-                  {/* --- NEW: Email Field (Only shows when registering) --- */}
-                  {isRegistering && (
-                    <input 
-                      style={{...inputStyle, padding: "6px"}} 
-                      type="email" 
-                      value={registerEmail} 
-                      onChange={e => setRegisterEmail(e.target.value)} 
-                      placeholder="Email Address" 
-                    />
-                  )}
-
-                  <input style={{...inputStyle, padding: "6px"}} value={loginInput} onChange={e => setLoginInput(e.target.value)} placeholder="Username" />
-                  <input type="password" style={{...inputStyle, padding: "6px"}} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Password" />
-
-                  <button style={{...activeTabBtn, padding: "8px", backgroundColor: isRegistering ? "#28a745" : "#007bff"}} onClick={handleAuth}>
-                    {isRegistering ? "Sign Up" : "Log In"}
-                  </button>
-                  
-                  <button style={{ backgroundColor: "transparent", border: "none", color: "#007bff", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} onClick={() => setIsRegistering(!isRegistering)}>
-                    {isRegistering ? "Already have an account? Log in." : "Create an account"}
-                  </button>
-
-                  {/* --- NEW: FORGOT PASSWORD BUTTON --- */}
-                  {!isRegistering && (
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
-                    <button 
-                        style={{ backgroundColor: "transparent", border: "none", color: "#888", fontSize: "10px", cursor: "pointer", textDecoration: "underline" }} 
-                        onClick={() => setIsForgotPassword(true)}
-                    >
-                      Forgot Password?
-                    </button>
-                    
-                    <button 
-                        style={{ backgroundColor: "transparent", border: "none", color: "#888", fontSize: "10px", cursor: "pointer", textDecoration: "underline" }} 
-                        onClick={() => setIsResending(true)}
-                    >
-                      Resend Verification
-                    </button>
-                  </div>
-                  )}
-                </div>
-              )
-            ) : (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "14px" }}>
-                  👤 {user.username} {user.is_premium && <span style={{ color: "gold", textShadow: "0 0 2px rgba(0,0,0,0.2)" }}>★ Premium</span>}
-                </span>
-                <button onClick={handleLogout} style={{ fontSize: "12px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#f8f9fa", border: "1px solid #ddd", borderRadius: "4px" }}>Logout</button>
-              </div>
-            )}
-            {/* --- PROFILE SETTINGS PANEL --- */}
-                {user && (
-                  <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "6px", border: "1px solid #ddd", marginTop: "20px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                      <label style={{...labelStyle, margin: 0, color: "#333"}}>⚙️ Account Settings</label>
                       <button 
-                        onClick={() => setIsEditingProfile(!isEditingProfile)} 
-                        style={{ fontSize: "11px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
+                        style={{...activeTabBtn, padding: "8px", backgroundColor: "#17a2b8"}} 
+                        onClick={async () => {
+                          if (!resendEmailInput) return alert("Please enter your email");
+                          
+                          const res = await fetch(`${API_BASE}/resend-verification`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email: resendEmailInput })
+                          });
+                          
+                          const data = await res.json();
+                          alert(data.message);
+                          setIsResending(false);
+                        }}
                       >
-                        {isEditingProfile ? "Cancel" : "Edit Profile"}
+                        Send New Link
+                      </button>
+                      
+                      <button 
+                        style={{ backgroundColor: "transparent", border: "none", color: "#666", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} 
+                        onClick={() => setIsResending(false)}
+                      >
+                        Back to Login
                       </button>
                     </div>
+                  ) : isForgotPassword ? (
+                    // --- FORGOT PASSWORD PANEL ---
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <strong style={{ fontSize: "14px", color: "#333" }}>Reset Password</strong>
+                      <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Enter your account email to receive a reset link.</p>
+                      
+                      <input style={{...inputStyle, padding: "6px"}} type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="Registered Email Address" />
+                      
+                      <button 
+                        style={{...activeTabBtn, padding: "8px", backgroundColor: "#007bff"}} 
+                        onClick={async () => {
+                          if (!forgotEmail) return alert("Please enter your email");
+                          await fetch(`${API_BASE}/forgot-password`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email: forgotEmail })
+                          });
+                          alert("If that email exists in our system, a reset link has been sent.");
+                          setIsForgotPassword(false);
+                        }}
+                      >
+                        Send Reset Link
+                      </button>
+                      
+                      <button style={{ backgroundColor: "transparent", border: "none", color: "#666", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} onClick={() => setIsForgotPassword(false)}>
+                        Back to Login
+                      </button>
+                    </div>
+                  ) : (
+                    // --- EXISTING LOGIN/REGISTER PANEL ---
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <strong style={{ fontSize: "14px", color: "#333" }}>{isRegistering ? "Register Account" : "Guest Mode"}</strong>
+                        {!isRegistering && <span style={{ fontSize: "10px", backgroundColor: "#e2e3e5", padding: "2px 6px", borderRadius: "4px" }}>Free</span>}
+                      </div>
+                      
+                      {!isRegistering && <p style={{ fontSize: "11px", color: "#666", margin: 0 }}>Create 1 surface as a guest, or log in.</p>}
+                      <hr style={{ margin: "5px 0", borderTop: "1px solid #ddd" }} />
+                      
+                      {/* --- Email Field (Only shows when registering) --- */}
+                      {isRegistering && (
+                        <input 
+                          style={{...inputStyle, padding: "6px"}} 
+                          type="email" 
+                          value={registerEmail} 
+                          onChange={e => setRegisterEmail(e.target.value)} 
+                          placeholder="Email Address" 
+                        />
+                      )}
 
-                    {isEditingProfile ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="New Username" />
-                        <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email Address (e.g. caa@gov.uk)" />
-                        <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password (Leave blank to keep current)" />
-                        {/* --- NEW: CESIUM ION TOKEN INPUT --- */}
-                        <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: "1px dashed #ccc" }}>
-                          <label style={{ fontSize: "10px", fontWeight: "bold", color: "#666" }}>Custom Buildings data code (Optional)</label>
-                          <input 
-                            style={{...inputStyle, padding: "6px", fontSize: "12px", fontFamily: "monospace", backgroundColor: "#f0f0f0"}} 
-                            value={editIonToken} 
-                            onChange={e => setEditIonToken(e.target.value)} 
-                            placeholder="Contact us to receive one" 
-                          />
-                          <p style={{ fontSize: "10px", color: "#888", margin: "2px 0 0 0" }}>
-                            If provided, users viewing your surfaces will use this data for 3D assets.
-                          </p>
-                        </div>
+                      <input style={{...inputStyle, padding: "6px"}} value={loginInput} onChange={e => setLoginInput(e.target.value)} placeholder="Username" />
+                      <input type="password" style={{...inputStyle, padding: "6px"}} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Password" />
+
+                      <button style={{...activeTabBtn, padding: "8px", backgroundColor: isRegistering ? "#28a745" : "#007bff"}} onClick={handleAuth}>
+                        {isRegistering ? "Sign Up" : "Log In"}
+                      </button>
+                      
+                      <button style={{ backgroundColor: "transparent", border: "none", color: "#007bff", fontSize: "11px", cursor: "pointer", marginTop: "5px" }} onClick={() => setIsRegistering(!isRegistering)}>
+                        {isRegistering ? "Already have an account? Log in." : "Create an account"}
+                      </button>
+
+                      {/* --- FORGOT PASSWORD / RESEND --- */}
+                      {!isRegistering && (
+                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "5px" }}>
                         <button 
-                          onClick={handleUpdateProfile} 
-                          style={{...activeTabBtn, backgroundColor: "#0b1b3d", padding: "8px", fontSize: "12px", marginTop: "5px"}}
+                            style={{ backgroundColor: "transparent", border: "none", color: "#888", fontSize: "10px", cursor: "pointer", textDecoration: "underline" }} 
+                            onClick={() => setIsForgotPassword(true)}
                         >
-                          Save Changes
+                          Forgot Password?
+                        </button>
+                        
+                        <button 
+                            style={{ backgroundColor: "transparent", border: "none", color: "#888", fontSize: "10px", cursor: "pointer", textDecoration: "underline" }} 
+                            onClick={() => setIsResending(true)}
+                        >
+                          Resend Verification
                         </button>
                       </div>
-                    ) : (
-                      <div style={{ fontSize: "12px", color: "#555" }}>
-                        <p style={{ margin: "0 0 5px 0" }}><strong>Username:</strong> {user.username}</p>
-                        <p style={{ margin: "0 0 5px 0" }}><strong>Email:</strong> {user.email || <span style={{color: "#999"}}>Not provided</span>}</p>
-                        <p style={{ margin: "0" }}><strong>Account Type:</strong> {user.is_premium ? "Premium Authority" : "Free User"}</p>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  // --- LOGGED IN VIEW ---
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "14px" }}>
+                        👤 {user.username} {user.is_premium && <span style={{ color: "gold", textShadow: "0 0 2px rgba(0,0,0,0.2)" }}>★ Premium</span>}
+                      </span>
+                      <button onClick={handleLogout} style={{ fontSize: "12px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#f8f9fa", border: "1px solid #ddd", borderRadius: "4px" }}>Logout</button>
+                    </div>
+
+                    {/* --- PROFILE SETTINGS --- */}
+                    <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "6px", border: "1px solid #ddd", marginTop: "20px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                        <label style={{...labelStyle, margin: 0, color: "#333"}}>⚙️ Account Settings</label>
+                        <button 
+                          onClick={() => setIsEditingProfile(!isEditingProfile)} 
+                          style={{ fontSize: "11px", padding: "4px 8px", cursor: "pointer", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
+                        >
+                          {isEditingProfile ? "Cancel" : "Edit Profile"}
+                        </button>
                       </div>
-                    )}
+
+                      {isEditingProfile ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="New Username" />
+                          <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email Address" />
+                          <input style={{...inputStyle, padding: "6px", fontSize: "12px"}} type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New Password" />
+                          
+                          <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: "1px dashed #ccc" }}>
+                            <label style={{ fontSize: "10px", fontWeight: "bold", color: "#666" }}>Custom Buildings data code (Optional)</label>
+                            <input 
+                              style={{...inputStyle, padding: "6px", fontSize: "12px", fontFamily: "monospace", backgroundColor: "#f0f0f0"}} 
+                              value={editIonToken} 
+                              onChange={e => setEditIonToken(e.target.value)} 
+                              placeholder="Contact us to receive one" 
+                            />
+                            <p style={{ fontSize: "10px", color: "#888", margin: "2px 0 0 0" }}>
+                              If provided, users viewing your surfaces will use this data for 3D assets.
+                            </p>
+                          </div>
+                          <button 
+                            onClick={handleUpdateProfile} 
+                            style={{...activeTabBtn, backgroundColor: "#0b1b3d", padding: "8px", fontSize: "12px", marginTop: "5px"}}
+                          >
+                            Save Changes
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "12px", color: "#555" }}>
+                          <p style={{ margin: "0 0 5px 0" }}><strong>Username:</strong> {user.username}</p>
+                          <p style={{ margin: "0 0 5px 0" }}><strong>Email:</strong> {user.email || <span style={{color: "#999"}}>Not provided</span>}</p>
+                          <p style={{ margin: "0" }}><strong>Account Type:</strong> {user.is_premium ? "Premium Authority" : "Free User"}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
+              </div>
+            )}
           </div>
       </main>
     );
