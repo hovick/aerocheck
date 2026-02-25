@@ -457,16 +457,53 @@ export default function Home() {
   }, [activeTab, mounted]);
 
 // Handle CSV File Upload for Premium Users
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle KML/DXF File Upload for Premium Users
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      setCustomPoints(text); // Populates the text area automatically!
-    };
-    reader.readAsText(file);
+
+    // Check extension
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".txt") || name.endsWith(".csv")) {
+        // Legacy local read for CSV/TXT
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target?.result as string;
+            setCustomPoints(text);
+        };
+        reader.readAsText(file);
+        return;
+    }
+
+    // New Server-Side Import for KML/DXF
+    if (name.endsWith(".kml") || name.endsWith(".dxf")) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        setIsCreating(true); // Reuse loading state
+        try {
+            const res = await fetch(`${API_BASE}/import/geometry`, {
+                method: "POST",
+                headers: {
+                    // Do NOT set Content-Type header manually for FormData, 
+                    // browser does it automatically with boundary!
+                    "Authorization": getAuthHeaders()["Authorization"] || ""
+                },
+                body: formData
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || "Import failed");
+
+            setCustomPoints(data.result); // Populate the text area!
+            alert("File imported! Please review coordinates in the text box before creating.");
+            
+        } catch (err: any) {
+            alert(`Import Error: ${err.message}`);
+        } finally {
+            setIsCreating(false);
+        }
+    }
   };
 
   // --- BATCH ANALYSIS LOGIC ---
@@ -1004,20 +1041,37 @@ const handleDownloadLogs = async () => {
     };
     if (family === "CUSTOM") {
             const lines = customPoints.split("\n");
-            const coords = lines.map(line => {
-                const parts = line.split(",").map(s => s.trim());
-                // Expecting 4 parts: id, lat, lon, alt
-                if (parts.length === 4) {
-                    return { 
-                        id: parts[0], 
-                        lat: parseFloat(parts[1]), 
-                        lon: parseFloat(parts[2]), 
-                        alt: parseFloat(parts[3]) 
-                    };
-                }
-                return null;
-            }).filter(p => p !== null);
+            const coords: any[] = [];
+            
+            lines.forEach(line => {
+                // Remove whitespace and ignore empty lines
+                const cleanLine = line.trim();
+                if (!cleanLine) return;
 
+                const parts = cleanLine.split(",").map(s => s.trim());
+                
+                // VALIDATION: We need at least Name + 1 point (4 parts)
+                // And the remaining parts must be multiples of 3 (Lat, Lon, Alt)
+                if (parts.length < 4 || (parts.length - 1) % 3 !== 0) {
+                    console.warn(`Skipping invalid line: ${line}`);
+                    return;
+                }
+
+                const surfaceId = parts[0]; // First item is the Name
+                
+                // Loop through the rest in chunks of 3
+                for (let i = 1; i < parts.length; i += 3) {
+                    coords.push({ 
+                        id: surfaceId, 
+                        lat: parseFloat(parts[i]), 
+                        lon: parseFloat(parts[i+1]), 
+                        alt: parseFloat(parts[i+2]) 
+                    });
+                }
+            });
+
+            if (coords.length < 3) return alert("Please enter at least 3 points for a valid polygon.");
+            
             bodyData = { ...bodyData, custom_coords: coords };
       }
     setIsCreating(true); // START LOADING
@@ -1599,7 +1653,7 @@ const handleDownloadLogs = async () => {
                     <label style={{...labelStyle, color: "#d4af37"}}>★ Premium Feature: Batch CSV Upload</label>
                     <input 
                         type="file" 
-                        accept=".csv,.txt" 
+                        accept=".csv,.txt,.kml,.dxf"
                         onChange={handleFileUpload} 
                         style={inputStyle} 
                         disabled={!user?.is_premium}
@@ -1607,8 +1661,8 @@ const handleDownloadLogs = async () => {
                     
                     <label style={labelStyle}>Coordinates (ID, Lat, Lon, Alt)</label>
                     <textarea 
-                        style={{ ...inputStyle, height: "120px", fontFamily: "monospace" }} 
-                        placeholder={`Surface_A, 51.47, -0.45, 100\nSurface_A, 51.47, -0.44, 100\n...`}
+                        style={{ ...inputStyle, height: "120px", fontFamily: "monospace", fontSize: "11px" }} 
+                        placeholder={`Format: Name, Lat1, Lon1, Alt1, Lat2, Lon2, Alt2...\nExample:\nBuilding_A, 51.47, -0.45, 100, 51.48, -0.44, 105, 51.46, -0.44, 100`}
                         value={customPoints}
                         onChange={e => setCustomPoints(e.target.value)}
                         disabled={!user?.is_premium}
