@@ -1975,43 +1975,6 @@ const handleDownloadLogs = async () => {
                 </select>
                 
                 <hr style={{ borderTop: "1px solid #eee", width: "100%" }}/>
-                {/* --- VISUAL OFFSET SETTING --- */}
-                <div style={{
-                    backgroundColor: "#f8f9fa", 
-                    padding: "10px", 
-                    borderRadius: "4px", 
-                    border: "1px solid #ddd",
-                    marginTop: "10px",
-                    marginBottom: "10px"
-                }}>
-                    <label style={{ fontSize: "11px", fontWeight: "bold", color: "#333", display: "flex", justifyContent: "space-between" }}>
-                        Visual Geoid Offset (EGM96)
-                        <span title="Difference between MSL and WGS84 Ellipsoid at this location. Positive values move surfaces UP.">ℹ️</span>
-                    </label>
-                    <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
-                        <input 
-                            type="number" 
-                            style={{ ...numInputStyle, padding: "6px" }} 
-                            value={geoidOffset} 
-                            onChange={(e) => setGeoidOffset(parseFloat(e.target.value) || 0)} 
-                        />
-                        <button 
-                            style={{ ...activeTabBtn, padding: "6px 12px", backgroundColor: "#0b1b3d" }}
-                            onClick={() => {
-                                // Re-draw all currently active surfaces with the new offset
-                                if (drawnSurfacesRef.current.length > 0) {
-                                    handleDrawSurface(drawnSurfacesRef.current);
-                                }
-                            }}
-                        >
-                            Apply Shift
-                        </button>
-                    </div>
-                    <p style={{ fontSize: "9px", color: "#666", margin: "4px 0 0 0", lineHeight: "1.2" }}>
-                        Automatically calculated. Shifts 3D visuals to align with terrain. Does NOT affect database or analysis logic (MSL).
-                    </p>
-                </div>
-                <hr style={{ borderTop: "1px solid #eee", width: "100%" }}/>
                 <label style={labelStyle}>Obstacle (Lat / Lon / Alt)</label>
                 <div style={rowStyle}>
                   <input style={numInputStyle} type="number" value={obsPos.lat} onChange={e => setObsPos({...obsPos, lat: +e.target.value})} />
