@@ -382,8 +382,9 @@ export default function Home() {
         baseLayerPicker: false,
         animation: false,
         timeline: false,
-      }
-    );
+      });
+      
+      viewerRef.current.scene.globe.depthTestAgainstTerrain = true; 
     }
   }, [mounted]);
 
@@ -725,7 +726,8 @@ export default function Home() {
     setSavedSurfaces(prev => prev.filter(s => s.id !== surfaceId));
   };
 
-  const handleDrawSurface = (surfaceInput: any | any[]) => {
+  // --- THE FIX: Add explicitOffset parameter ---
+  const handleDrawSurface = (surfaceInput: any | any[], explicitOffset?: number) => {
     if (!viewerRef.current) return;
     
     // Save to memory
@@ -735,14 +737,17 @@ export default function Home() {
     viewerRef.current.entities.removeAll();
     const entitiesToAdd: Cesium.Entity[] = [];
 
+    // --- Use explicit offset if provided, otherwise fallback to state ---
+    const appliedOffset = explicitOffset !== undefined ? explicitOffset : geoidOffset;
+
     surfaces.forEach(surface => {
         if (surface.geometry) {
             surface.geometry.forEach((geo: any) => {
-                // --- APPLY GEOID OFFSET & EXAGGERATION ---
-                // Math: (Base Altitude + Geoid Offset) * Exaggeration Factor
+                
                 const adjustedCoords = [...geo.coords];
                 for (let i = 2; i < adjustedCoords.length; i += 3) {
-                    adjustedCoords[i] = (adjustedCoords[i] + geoidOffset) * exaggeration;
+                    // Apply the instant offset
+                    adjustedCoords[i] = (adjustedCoords[i] + appliedOffset) * exaggeration;
                 }
 
                 const entity = viewerRef.current?.entities.add({
@@ -762,7 +767,6 @@ export default function Home() {
         }
     });
 
-    // Zoom out to fit the entire airport in the camera view
     if (entitiesToAdd.length > 0) {
         viewerRef.current.zoomTo(entitiesToAdd, new Cesium.HeadingPitchRange(
             Cesium.Math.toRadians(0), 
@@ -1915,8 +1919,14 @@ const handleDownloadLogs = async () => {
                                   } catch (err) { console.error("Failed to reload buildings with new data", err); }
                                 }
 
+                                let newOffset = geoidOffset;
+                                if (data.surfaces.length > 0 && data.surfaces[0].geometry.length > 0) {
+                                  const coords = data.surfaces[0].geometry[0].coords;
+                                  newOffset = await autoFetchGeoidOffset(coords[1], coords[0]);
+                                }
+
                                 // Draw the surfaces
-                                handleDrawSurface(data.surfaces); 
+                                handleDrawSurface(data.surfaces, newOffset);
                               }
                             } catch (err) {
                               console.error("Could not load airport geometry or token.");
@@ -1945,18 +1955,14 @@ const handleDownloadLogs = async () => {
                     if (chosenAirport) {
                       const airportSurfaces = savedSurfaces.filter(s => s.airport_name === chosenAirport);
                       
-                      // --- 2. Auto-fetch offset based on the first loaded geometry ---
+                      let newOffset = geoidOffset;
                       if (airportSurfaces.length > 0 && airportSurfaces[0].geometry.length > 0) {
                          const coords = airportSurfaces[0].geometry[0].coords;
-                         const lat = coords[1]; // Index 1 is lat
-                         const lon = coords[0]; // Index 0 is lon
-                         const newOffset = await autoFetchGeoidOffset(lat, lon);
-                         
-                         // Temporarily update state for drawing immediately
-                         setGeoidOffset(newOffset);
+                         newOffset = await autoFetchGeoidOffset(coords[1], coords[0]);
                       }
 
-                      handleDrawSurface(airportSurfaces);
+                      // Pass the offset directly!
+                      handleDrawSurface(airportSurfaces, newOffset);
                     } else {
                       if (viewerRef.current) viewerRef.current.entities.removeAll();
                     }
