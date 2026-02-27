@@ -899,13 +899,16 @@ export default function Home() {
   // --- PUBLIC SURFACE SEARCH LOGIC ---
   const handleSearchPublicSurfaces = async (query: string) => {
     setPubSurfQuery(query);
-    if (query.length < 2) {
-      setPubSurfResults([]);
-      return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/search/public-surfaces?q=${query}`);
+        const data = await res.json();
+        
+        // Optional: If your DB has hundreds of airports, limit the frontend display to 10
+        setPubSurfResults(data.slice(0, 10)); 
+    } catch (err) {
+        console.error("Search failed", err);
     }
-    const res = await fetch(`${API_BASE}/search/public-surfaces?q=${query}`);
-    const data = await res.json();
-    setPubSurfResults(data);
   };
 
   const handleExport = async (format: 'kml' | 'dxf') => {
@@ -1853,7 +1856,12 @@ const handleDownloadLogs = async () => {
                     style={inputStyle} 
                     value={pubSurfQuery}
                     onChange={e => handleSearchPublicSurfaces(e.target.value)}
-                    placeholder="e.g. KJFK - RWY 04L..."
+                    onFocus={e => handleSearchPublicSurfaces(e.target.value)} // Show list immediately on click
+                    onBlur={() => {
+                        // Delay the hide by 200ms so the user can actually click the dropdown item!
+                        setTimeout(() => setPubSurfResults([]), 200);
+                    }}
+                    placeholder="Click to see available airports or type to search..."
                   />
                   {/* SEARCH RESULTS AUTOCOMPLETE */}
                   {pubSurfResults.length > 0 && (
