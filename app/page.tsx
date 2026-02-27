@@ -727,17 +727,15 @@ export default function Home() {
   };
 
   // --- THE FIX: Add explicitOffset parameter ---
-  const handleDrawSurface = (surfaceInput: any | any[], explicitOffset?: number) => {
+  const handleDrawSurface = (surfaceInput: any | any[], explicitOffset?: number, shouldZoom: boolean = true) => {
     if (!viewerRef.current) return;
     
-    // Save to memory
     const surfaces = Array.isArray(surfaceInput) ? surfaceInput : [surfaceInput];
     drawnSurfacesRef.current = surfaces;
 
     viewerRef.current.entities.removeAll();
     const entitiesToAdd: Cesium.Entity[] = [];
 
-    // --- Use explicit offset if provided, otherwise fallback to state ---
     const appliedOffset = explicitOffset !== undefined ? explicitOffset : geoidOffset;
 
     surfaces.forEach(surface => {
@@ -746,7 +744,6 @@ export default function Home() {
                 
                 const adjustedCoords = [...geo.coords];
                 for (let i = 2; i < adjustedCoords.length; i += 3) {
-                    // Apply the instant offset
                     adjustedCoords[i] = (adjustedCoords[i] + appliedOffset) * exaggeration;
                 }
 
@@ -767,7 +764,8 @@ export default function Home() {
         }
     });
 
-    if (entitiesToAdd.length > 0) {
+    // --- THE FIX: Only zoom if shouldZoom is true ---
+    if (shouldZoom && entitiesToAdd.length > 0) {
         viewerRef.current.zoomTo(entitiesToAdd, new Cesium.HeadingPitchRange(
             Cesium.Math.toRadians(0), 
             Cesium.Math.toRadians(-45), 
