@@ -110,6 +110,36 @@ export default function Home() {
   const [fafPos, setFafPos] = useState({ lat: 10.349778, lon: -75.517365, alt: 1640 });
   // Missed Approach Point
   const [maptPos, setMaptPos] = useState({ lat: 10.430861, lon: -75.513378, alt: 830 });
+  // Heliport Specific State
+  const [heliParams, setHeliParams] = useState({
+    lat: 40.4168, lon: -3.7038, alt: 100,
+    bearing: 45,            
+    innerWidth: 30,         
+    startOffset: 15,        
+    length: 1075,           
+    slopePct: 8.0,          
+    divergencePct: 10.0     
+  });
+
+  // --- NEW: Heliport Presets ---
+  const [heliPreset, setHeliPreset] = useState("pc2_day");
+
+  const handleHeliPresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const preset = e.target.value;
+    setHeliPreset(preset);
+    
+    // Auto-fill standard ICAO Annex 14 Vol II parameters
+    if (preset === "pc1_day") {
+      setHeliParams(prev => ({ ...prev, slopePct: 4.5, divergencePct: 10.0, length: 3333 }));
+    } else if (preset === "pc1_night") {
+      setHeliParams(prev => ({ ...prev, slopePct: 4.5, divergencePct: 15.0, length: 3333 }));
+    } else if (preset === "pc2_day") {
+      setHeliParams(prev => ({ ...prev, slopePct: 8.0, divergencePct: 10.0, length: 1075 }));
+    } else if (preset === "pc2_night") {
+      setHeliParams(prev => ({ ...prev, slopePct: 8.0, divergencePct: 15.0, length: 1075 }));
+    }
+  };
+
   const clearTools = () => {
     setActiveTool("none");
     setRulerPts([]);
@@ -1037,6 +1067,12 @@ const handleDownloadLogs = async () => {
             thr_lat: navThr.lat,
             thr_lon: navThr.lon,
             thr_alt: navThr.alt
+        } : null,
+    heliport_params: family === "HELIPORT" ? {
+            lat: heliParams.lat, lon: heliParams.lon, alt: heliParams.alt,
+            bearing: heliParams.bearing, inner_width: heliParams.innerWidth,
+            start_offset: heliParams.startOffset, length: heliParams.length,
+            slope_pct: heliParams.slopePct, divergence_pct: heliParams.divergencePct
         } : null
     };
     if (family === "CUSTOM") {
@@ -1469,6 +1505,7 @@ const handleDownloadLogs = async () => {
                   <option value="OFZ">OFZ / OES</option>
                   <option value="NAVAID">Navaid Restrictive</option>
                   <option value="CUSTOM">Custom Surface</option>
+                  <option value="HELIPORT">Heliport OLS</option>
                 </select>
 
                 <label style={labelStyle}>Threshold 1 (Lat / Lon / Alt)</label>
@@ -1498,6 +1535,70 @@ const handleDownloadLogs = async () => {
                       <option value="precision">Precision Approach</option>
                     </select>
                   </>
+                )}
+                {/* DYNAMIC HELIPORT FIELDS */}
+                {family === "HELIPORT" && (
+                  <div style={{ backgroundColor: "#e9ecef", padding: "10px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    
+                    {/* --- NEW: PRESET DROPDOWN --- */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "5px", borderBottom: "1px solid #ccc", paddingBottom: "10px" }}>
+                        <label style={{...labelStyle, color: "#d35400"}}>ICAO Annex 14 Presets</label>
+                        <select style={inputStyle} value={heliPreset} onChange={handleHeliPresetChange}>
+                            <option value="custom">Custom Dimensions</option>
+                            <option value="pc1_day">Performance Class 1 (Day)</option>
+                            <option value="pc1_night">Performance Class 1 (Night)</option>
+                            <option value="pc2_day">Performance Class 2 & 3 (Day)</option>
+                            <option value="pc2_night">Performance Class 2 & 3 (Night)</option>
+                        </select>
+                        <p style={{fontSize: "10px", color: "#666", margin: 0}}>
+                          Automatically fills slope, divergence, and length according to standard performance classes.
+                        </p>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <label style={{...labelStyle, color: "#008b8b"}}>Heliport FATO Center (Lat / Lon / Alt)</label>
+                    </div>
+                    <div style={rowStyle}>
+                      <input style={numInputStyle} type="number" value={heliParams.lat} onChange={e => { setHeliParams({...heliParams, lat: +e.target.value}); setHeliPreset("custom"); }} placeholder="Lat" />
+                      <input style={numInputStyle} type="number" value={heliParams.lon} onChange={e => { setHeliParams({...heliParams, lon: +e.target.value}); setHeliPreset("custom"); }} placeholder="Lon" />
+                      <input style={numInputStyle} type="number" value={heliParams.alt} onChange={e => { setHeliParams({...heliParams, alt: +e.target.value}); setHeliPreset("custom"); }} placeholder="Alt" />
+                    </div>
+
+                    <div style={rowStyle}>
+                        <div style={{flex:1}}>
+                            <label style={labelStyle}>Bearing (°)</label>
+                            <input style={inputStyle} type="number" value={heliParams.bearing} onChange={e => { setHeliParams({...heliParams, bearing: +e.target.value}); setHeliPreset("custom"); }} />
+                        </div>
+                        <div style={{flex:1}}>
+                            <label style={labelStyle}>Start Offset (m)</label>
+                            <input style={inputStyle} type="number" value={heliParams.startOffset} onChange={e => { setHeliParams({...heliParams, startOffset: +e.target.value}); setHeliPreset("custom"); }} title="Distance from center to safety area edge" />
+                        </div>
+                    </div>
+
+                    <label style={labelStyle}>Surface Dimensions</label>
+                    <div style={rowStyle}>
+                        <div style={{flex:1}}>
+                            <label style={{...labelStyle, fontSize: "10px", fontWeight: "normal"}}>Inner Width (m)</label>
+                            <input style={inputStyle} type="number" value={heliParams.innerWidth} onChange={e => { setHeliParams({...heliParams, innerWidth: +e.target.value}); setHeliPreset("custom"); }} />
+                        </div>
+                        <div style={{flex:1}}>
+                            <label style={{...labelStyle, fontSize: "10px", fontWeight: "normal"}}>Length (m)</label>
+                            <input style={inputStyle} type="number" value={heliParams.length} onChange={e => { setHeliParams({...heliParams, length: +e.target.value}); setHeliPreset("custom"); }} />
+                        </div>
+                    </div>
+
+                    <label style={labelStyle}>Gradients</label>
+                    <div style={rowStyle}>
+                        <div style={{flex:1}}>
+                            <label style={{...labelStyle, fontSize: "10px", fontWeight: "normal"}}>Slope (%)</label>
+                            <input style={inputStyle} type="number" step="0.1" value={heliParams.slopePct} onChange={e => { setHeliParams({...heliParams, slopePct: +e.target.value}); setHeliPreset("custom"); }} />
+                        </div>
+                        <div style={{flex:1}}>
+                            <label style={{...labelStyle, fontSize: "10px", fontWeight: "normal"}}>Divergence (%)</label>
+                            <input style={inputStyle} type="number" step="0.1" value={heliParams.divergencePct} onChange={e => { setHeliParams({...heliParams, divergencePct: +e.target.value}); setHeliPreset("custom"); }} />
+                        </div>
+                    </div>
+                  </div>
                 )}
                 
                 {/* --- DYNAMIC RNAV FIELDS --- */}
