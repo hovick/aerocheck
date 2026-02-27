@@ -779,7 +779,8 @@ export default function Home() {
   // --- NEW: Watch for Generic Mode Toggles ---
   useEffect(() => {
     if (drawnSurfacesRef.current.length > 0) {
-        handleDrawSurface(drawnSurfacesRef.current);
+        // Explicitly pass the current state offset
+        handleDrawSurface(drawnSurfacesRef.current, geoidOffset); 
     }
   }, [isGenericMode]);
 
@@ -1160,43 +1161,22 @@ const handleDownloadLogs = async () => {
       if (data.error) return alert(data.error); // Catch DB limits
       
       if (viewerRef.current && data.geometry) {
-          // 1. Clear previous entities and enable terrain depth testing
-          viewerRef.current.entities.removeAll();
-          
-          // 2. Define the array at the start of the block so it is accessible everywhere
-          const entitiesToAdd: Cesium.Entity[] = [];
+          // 1. Fetch EGM96 offset
+          let newOffset = geoidOffset;
+          if (data.geometry.length > 0 && data.geometry[0].coords.length >= 2) {
+              const coords = data.geometry[0].coords;
+              newOffset = await autoFetchGeoidOffset(coords[1], coords[0]);
+          }
 
-          data.geometry.forEach((geo: any) => {
-              const entity = viewerRef.current?.entities.add({
-                  name: geo.name,
-                  polygon: {
-                      hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(geo.coords),
-                      // Enabling perPositionHeight gives the surfaces their 3D altitude
-                      perPositionHeight: true, 
-                      material: isGenericMode 
-                        ? genericColor
-                        : Cesium.Color.fromCssColorString(geo.color).withAlpha(0.4),
-                      outline: true,
-                      outlineColor: Cesium.Color.BLACK
-                  }
-              });
-              if (entity) entitiesToAdd.push(entity);
-          });
+          // 2. Let our master function draw it, apply the offset, and zoom the camera!
+          handleDrawSurface([data], newOffset);
 
-          // 3. ZOOM IN: Now 'entitiesToAdd' is correctly populated and in scope
-          viewerRef.current.zoomTo(entitiesToAdd, new Cesium.HeadingPitchRange(
-              Cesium.Math.toRadians(0), 
-              Cesium.Math.toRadians(-45), 
-              5000 
-          ));
-
-      if (!user || !user.is_premium) {
-              // Overwrite array so guests only hold 1 temporary surface in memory
+          // 3. Save to memory
+          if (!user || !user.is_premium) {
               setSavedSurfaces([data]);
               setSelectedAnalysisAirport(data.airport_name);
-              setSelectedAnalysisOwner(0); // Force owner to 0 so the Analyze button knows it's temporary
+              setSelectedAnalysisOwner(0);
           } else {
-              // Pros get appended permanently
               setSavedSurfaces(prev => [...prev, data]);
           }
       }
@@ -2168,7 +2148,15 @@ const handleDownloadLogs = async () => {
                         <div style={{...rowStyle, marginTop: "8px"}}>
                           <button 
                             style={{...activeTabBtn, backgroundColor: "#0053ac", fontSize: "11px", padding: "6px"}} 
-                            onClick={() => handleDrawSurface(s)}
+                            onClick={async () => {
+                              // Auto-fetch offset before drawing from dashboard
+                              let newOffset = geoidOffset;
+                              if (s.geometry && s.geometry.length > 0 && s.geometry[0].coords.length >= 2) {
+                                const coords = s.geometry[0].coords;
+                                newOffset = await autoFetchGeoidOffset(coords[1], coords[0]);
+                              }
+                              handleDrawSurface([s], newOffset);
+                            }}
                           >
                             🗺️ Draw
                           </button>
@@ -2307,9 +2295,10 @@ const handleDownloadLogs = async () => {
                   }
               }}
               onMouseUp={() => {
-                  // 2. Only Redraw Surfaces when user RELEASES the mouse (Expensive)
+                  // Only Redraw Surfaces when user RELEASES the mouse
                   if (drawnSurfacesRef.current.length > 0) {
-                      handleDrawSurface(drawnSurfacesRef.current);
+                      // Explicitly pass the current state offset
+                      handleDrawSurface(drawnSurfacesRef.current, geoidOffset); 
                   }
               }}
               style={{ width: "100%", cursor: "pointer" }}
