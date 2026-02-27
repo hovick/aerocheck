@@ -80,6 +80,20 @@ export default function Home() {
   // Map Controls State
   const [exaggeration, setExaggeration] = useState(1);
   const [geoidOffset, setGeoidOffset] = useState(0);
+  // --- HELPER: Auto-fetch Geoid Offset ---
+  const autoFetchGeoidOffset = async (lat: number, lon: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/geoid-offset?lat=${lat}&lon=${lon}`);
+      const data = await res.json();
+      if (data.offset !== undefined) {
+        setGeoidOffset(data.offset);
+        return data.offset;
+      }
+    } catch (err) {
+      console.error("Failed to fetch geoid offset", err);
+    }
+    return 0;
+  };
   // Public Surface Search State
   const [pubSurfQuery, setPubSurfQuery] = useState("");
   const [pubSurfResults, setPubSurfResults] = useState<any[]>([]);
@@ -645,7 +659,7 @@ export default function Home() {
     setIsSearching(false);
   };
 
-  const handleSelectRunway = (airport: any, runway: any) => {
+  const handleSelectRunway = async (airport: any, runway: any) => {
     // OurAirports uses feet. We MUST convert to meters (1 ft = 0.3048 m)
     const ftToM = 0.3048;
     const arpAltM = (Number(airport.alt_ft) || 0) * ftToM;
@@ -653,9 +667,12 @@ export default function Home() {
     setArpAlt(Number(arpAltM.toFixed(2)));
     setSurfName(`${airport.ident} - RWY ${runway.le_ident}/${runway.he_ident}`);
     
+    const lat = Number(runway.le_latitude_deg);
+    const lon = Number(runway.le_longitude_deg);
+
     setT1({
-      lat: Number(runway.le_latitude_deg),
-      lon: Number(runway.le_longitude_deg),
+      lat: lat,
+      lon: lon,
       alt: Number(((Number(runway.le_elevation_ft) || Number(airport.alt_ft) || 0) * ftToM).toFixed(2))
     });
     
@@ -667,6 +684,9 @@ export default function Home() {
     
     setSearchResults([]);
     setSearchQuery("");
+
+    // --- NEW: Auto-calculate offset based on Runway Lat/Lon ---
+    await autoFetchGeoidOffset(lat, lon);
   };
 
   const handleSelectNavaid = (navaid: any) => {
@@ -1916,16 +1936,26 @@ const handleDownloadLogs = async () => {
                 <select 
                   style={inputStyle} 
                   value={selectedAnalysisOwner === user?.id ? selectedAnalysisAirport : ""} 
-                  onChange={e => {
+                  onChange={async e => { // <-- 1. Mark as async
                     const chosenAirport = e.target.value;
                     setSelectedAnalysisAirport(chosenAirport);
                     setSelectedAnalysisOwner(user?.id || 0);
                     setPubSurfQuery(""); 
                     
-                    // --- NEW: AUTO DRAW THE AIRPORT ---
                     if (chosenAirport) {
-                      // Find every surface that belongs to the selected airport name
                       const airportSurfaces = savedSurfaces.filter(s => s.airport_name === chosenAirport);
+                      
+                      // --- 2. Auto-fetch offset based on the first loaded geometry ---
+                      if (airportSurfaces.length > 0 && airportSurfaces[0].geometry.length > 0) {
+                         const coords = airportSurfaces[0].geometry[0].coords;
+                         const lat = coords[1]; // Index 1 is lat
+                         const lon = coords[0]; // Index 0 is lon
+                         const newOffset = await autoFetchGeoidOffset(lat, lon);
+                         
+                         // Temporarily update state for drawing immediately
+                         setGeoidOffset(newOffset);
+                      }
+
                       handleDrawSurface(airportSurfaces);
                     } else {
                       if (viewerRef.current) viewerRef.current.entities.removeAll();
@@ -1939,7 +1969,43 @@ const handleDownloadLogs = async () => {
                 </select>
                 
                 <hr style={{ borderTop: "1px solid #eee", width: "100%" }}/>
-                
+                {/* --- VISUAL OFFSET SETTING --- */}
+                <div style={{
+                    backgroundColor: "#f8f9fa", 
+                    padding: "10px", 
+                    borderRadius: "4px", 
+                    border: "1px solid #ddd",
+                    marginTop: "10px",
+                    marginBottom: "10px"
+                }}>
+                    <label style={{ fontSize: "11px", fontWeight: "bold", color: "#333", display: "flex", justifyContent: "space-between" }}>
+                        Visual Geoid Offset (EGM96)
+                        <span title="Difference between MSL and WGS84 Ellipsoid at this location. Positive values move surfaces UP.">ℹ️</span>
+                    </label>
+                    <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
+                        <input 
+                            type="number" 
+                            style={{ ...numInputStyle, padding: "6px" }} 
+                            value={geoidOffset} 
+                            onChange={(e) => setGeoidOffset(parseFloat(e.target.value) || 0)} 
+                        />
+                        <button 
+                            style={{ ...activeTabBtn, padding: "6px 12px", backgroundColor: "#0b1b3d" }}
+                            onClick={() => {
+                                // Re-draw all currently active surfaces with the new offset
+                                if (drawnSurfacesRef.current.length > 0) {
+                                    handleDrawSurface(drawnSurfacesRef.current);
+                                }
+                            }}
+                        >
+                            Apply Shift
+                        </button>
+                    </div>
+                    <p style={{ fontSize: "9px", color: "#666", margin: "4px 0 0 0", lineHeight: "1.2" }}>
+                        Automatically calculated. Shifts 3D visuals to align with terrain. Does NOT affect database or analysis logic (MSL).
+                    </p>
+                </div>
+                <hr style={{ borderTop: "1px solid #eee", width: "100%" }}/>
                 <label style={labelStyle}>Obstacle (Lat / Lon / Alt)</label>
                 <div style={rowStyle}>
                   <input style={numInputStyle} type="number" value={obsPos.lat} onChange={e => setObsPos({...obsPos, lat: +e.target.value})} />
