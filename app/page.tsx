@@ -1519,7 +1519,7 @@ const handleDownloadLogs = async () => {
                   <option value="OFZ">OFZ / OES</option>
                   <option value="NAVAID">Navaid Restrictive</option>
                   <option value="CUSTOM">Custom Surface</option>
-                  <option value="HELIPORT">Heliport OLS</option>
+                  <option value="HELIPORT">Heliport OLS (In progress)</option>
                 </select>
 
                 <label style={labelStyle}>Threshold 1 (Lat / Lon / Alt)</label>
