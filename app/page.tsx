@@ -111,32 +111,38 @@ export default function Home() {
   // Missed Approach Point
   const [maptPos, setMaptPos] = useState({ lat: 10.430861, lon: -75.513378, alt: 830 });
   // Heliport Specific State
+  // --- Heliport Specific State ---
+  const [heliPreset, setHeliPreset] = useState("pc2_day");
+
   const [heliParams, setHeliParams] = useState({
+    fatoType: "non_instrument", // "non_instrument", "non_precision", "precision"
     lat: 40.4168, lon: -3.7038, alt: 100,
     bearing: 45,            
     innerWidth: 30,         
-    startOffset: 15,        
-    length: 1075,           
-    slopePct: 8.0,          
-    divergencePct: 10.0     
+    startOffset: 15,
+    // Approach Sections (Length, Slope%, Div%)
+    appS1Len: 245, appS1Slope: 8.0, appS1Div: 10.0,
+    appS2Len: 830, appS2Slope: 16.0, appS2Div: 0.0, // 0 div means parallel
+    // Take-off Sections
+    tkofS1Len: 245, tkofS1Slope: 8.0, tkofS1Div: 10.0,
+    tkofS2Len: 830, tkofS2Slope: 16.0, tkofS2Div: 0.0
   });
-
-  // --- NEW: Heliport Presets ---
-  const [heliPreset, setHeliPreset] = useState("pc2_day");
 
   const handleHeliPresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const preset = e.target.value;
     setHeliPreset(preset);
     
-    // Auto-fill standard ICAO Annex 14 Vol II parameters
-    if (preset === "pc1_day") {
-      setHeliParams(prev => ({ ...prev, slopePct: 4.5, divergencePct: 10.0, length: 3333 }));
-    } else if (preset === "pc1_night") {
-      setHeliParams(prev => ({ ...prev, slopePct: 4.5, divergencePct: 15.0, length: 3333 }));
+    // ICAO Annex 14 Vol II Auto-Fill Rules
+    if (preset === "pc1") {
+      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", appS1Len: 3386, appS1Slope: 4.5, appS1Div: 10, appS2Len: 0, appS2Slope: 0, appS2Div: 0, tkofS1Len: 3386, tkofS1Slope: 4.5, tkofS1Div: 10, tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0 }));
     } else if (preset === "pc2_day") {
-      setHeliParams(prev => ({ ...prev, slopePct: 8.0, divergencePct: 10.0, length: 1075 }));
+      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", appS1Len: 245, appS1Slope: 8.0, appS1Div: 10, appS2Len: 830, appS2Slope: 16.0, appS2Div: 0, tkofS1Len: 245, tkofS1Slope: 8.0, tkofS1Div: 10, tkofS2Len: 830, tkofS2Slope: 16.0, tkofS2Div: 0 }));
     } else if (preset === "pc2_night") {
-      setHeliParams(prev => ({ ...prev, slopePct: 8.0, divergencePct: 15.0, length: 1075 }));
+      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", appS1Len: 245, appS1Slope: 8.0, appS1Div: 15, appS2Len: 830, appS2Slope: 16.0, appS2Div: 0, tkofS1Len: 245, tkofS1Slope: 8.0, tkofS1Div: 15, tkofS2Len: 830, tkofS2Slope: 16.0, tkofS2Div: 0 }));
+    } else if (preset === "non_precision") {
+      setHeliParams(prev => ({ ...prev, fatoType: "non_precision", appS1Len: 2500, appS1Slope: 3.33, appS1Div: 16, appS2Len: 0, appS2Slope: 0, appS2Div: 0, tkofS1Len: 2500, tkofS1Slope: 3.33, tkofS1Div: 16, tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0 }));
+    } else if (preset === "precision") {
+      setHeliParams(prev => ({ ...prev, fatoType: "precision", appS1Len: 3000, appS1Slope: 5.24, appS1Div: 15, appS2Len: 0, appS2Slope: 0, appS2Div: 0, tkofS1Len: 3000, tkofS1Slope: 5.24, tkofS1Div: 15, tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0 }));
     }
   };
 
@@ -1069,10 +1075,18 @@ const handleDownloadLogs = async () => {
             thr_alt: navThr.alt
         } : null,
     heliport_params: family === "HELIPORT" ? {
+            fato_type: heliParams.fatoType,
             lat: heliParams.lat, lon: heliParams.lon, alt: heliParams.alt,
-            bearing: heliParams.bearing, inner_width: heliParams.innerWidth,
-            start_offset: heliParams.startOffset, length: heliParams.length,
-            slope_pct: heliParams.slopePct, divergence_pct: heliParams.divergencePct
+            bearing: heliParams.bearing, 
+            inner_width: heliParams.innerWidth, start_offset: heliParams.startOffset, 
+            approach_sections: [
+                { length: heliParams.appS1Len, slope_pct: heliParams.appS1Slope, divergence_pct: heliParams.appS1Div },
+                { length: heliParams.appS2Len, slope_pct: heliParams.appS2Slope, divergence_pct: heliParams.appS2Div }
+            ].filter(s => s.length > 0), // Ignore empty sections
+            takeoff_sections: [
+                { length: heliParams.tkofS1Len, slope_pct: heliParams.tkofS1Slope, divergence_pct: heliParams.tkofS1Div },
+                { length: heliParams.tkofS2Len, slope_pct: heliParams.tkofS2Slope, divergence_pct: heliParams.tkofS2Div }
+            ].filter(s => s.length > 0)
         } : null
     };
     if (family === "CUSTOM") {
@@ -1537,67 +1551,85 @@ const handleDownloadLogs = async () => {
                   </>
                 )}
                 {/* DYNAMIC HELIPORT FIELDS */}
+                {/* DYNAMIC HELIPORT FIELDS */}
                 {family === "HELIPORT" && (
                   <div style={{ backgroundColor: "#e9ecef", padding: "10px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "8px" }}>
                     
-                    {/* --- NEW: PRESET DROPDOWN --- */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "5px", borderBottom: "1px solid #ccc", paddingBottom: "10px" }}>
-                        <label style={{...labelStyle, color: "#d35400"}}>ICAO Annex 14 Presets</label>
-                        <select style={inputStyle} value={heliPreset} onChange={handleHeliPresetChange}>
-                            <option value="custom">Custom Dimensions</option>
-                            <option value="pc1_day">Performance Class 1 (Day)</option>
-                            <option value="pc1_night">Performance Class 1 (Night)</option>
-                            <option value="pc2_day">Performance Class 2 & 3 (Day)</option>
-                            <option value="pc2_night">Performance Class 2 & 3 (Night)</option>
-                        </select>
-                        <p style={{fontSize: "10px", color: "#666", margin: 0}}>
-                          Automatically fills slope, divergence, and length according to standard performance classes.
-                        </p>
+                    {/* --- TYPE & PRESET --- */}
+                    <div style={{ display: "flex", gap: "10px", marginBottom: "5px", borderBottom: "1px solid #ccc", paddingBottom: "10px" }}>
+                        <div style={{flex: 1}}>
+                            <label style={{...labelStyle, color: "#d35400"}}>FATO Type</label>
+                            <select style={inputStyle} value={heliParams.fatoType} onChange={e => { setHeliParams({...heliParams, fatoType: e.target.value}); setHeliPreset("custom"); }}>
+                                <option value="non_instrument">Non-Instrument</option>
+                                <option value="non_precision">Non-Precision Approach</option>
+                                <option value="precision">Precision Approach</option>
+                            </select>
+                        </div>
+                        <div style={{flex: 1}}>
+                            <label style={{...labelStyle, color: "#d35400"}}>Annex 14 Presets</label>
+                            <select style={inputStyle} value={heliPreset} onChange={handleHeliPresetChange}>
+                                <option value="custom">Custom Parameters</option>
+                                <option value="pc1">Perf. Class 1 (Non-Inst)</option>
+                                <option value="pc2_day">Perf. Class 2/3 Day (Non-Inst)</option>
+                                <option value="pc2_night">Perf. Class 2/3 Night (Non-Inst)</option>
+                                <option value="non_precision">Non-Precision Default</option>
+                                <option value="precision">Precision Default</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <label style={{...labelStyle, color: "#008b8b"}}>Heliport FATO Center (Lat / Lon / Alt)</label>
                     </div>
                     <div style={rowStyle}>
-                      <input style={numInputStyle} type="number" value={heliParams.lat} onChange={e => { setHeliParams({...heliParams, lat: +e.target.value}); setHeliPreset("custom"); }} placeholder="Lat" />
-                      <input style={numInputStyle} type="number" value={heliParams.lon} onChange={e => { setHeliParams({...heliParams, lon: +e.target.value}); setHeliPreset("custom"); }} placeholder="Lon" />
-                      <input style={numInputStyle} type="number" value={heliParams.alt} onChange={e => { setHeliParams({...heliParams, alt: +e.target.value}); setHeliPreset("custom"); }} placeholder="Alt" />
+                      <input style={numInputStyle} type="number" value={heliParams.lat} onChange={e => setHeliParams({...heliParams, lat: +e.target.value})} placeholder="Lat" />
+                      <input style={numInputStyle} type="number" value={heliParams.lon} onChange={e => setHeliParams({...heliParams, lon: +e.target.value})} placeholder="Lon" />
+                      <input style={numInputStyle} type="number" value={heliParams.alt} onChange={e => setHeliParams({...heliParams, alt: +e.target.value})} placeholder="Alt" />
                     </div>
 
                     <div style={rowStyle}>
                         <div style={{flex:1}}>
-                            <label style={labelStyle}>Bearing (°)</label>
-                            <input style={inputStyle} type="number" value={heliParams.bearing} onChange={e => { setHeliParams({...heliParams, bearing: +e.target.value}); setHeliPreset("custom"); }} />
+                            <label style={labelStyle}>Take-off Bearing (°)</label>
+                            <input style={inputStyle} type="number" value={heliParams.bearing} onChange={e => setHeliParams({...heliParams, bearing: +e.target.value})} />
                         </div>
                         <div style={{flex:1}}>
-                            <label style={labelStyle}>Start Offset (m)</label>
-                            <input style={inputStyle} type="number" value={heliParams.startOffset} onChange={e => { setHeliParams({...heliParams, startOffset: +e.target.value}); setHeliPreset("custom"); }} title="Distance from center to safety area edge" />
+                            <label style={labelStyle}>Safety Area Width (m)</label>
+                            <input style={inputStyle} type="number" value={heliParams.innerWidth} onChange={e => setHeliParams({...heliParams, innerWidth: +e.target.value})} />
                         </div>
                     </div>
 
-                    <label style={labelStyle}>Surface Dimensions</label>
-                    <div style={rowStyle}>
-                        <div style={{flex:1}}>
-                            <label style={{...labelStyle, fontSize: "10px", fontWeight: "normal"}}>Inner Width (m)</label>
-                            <input style={inputStyle} type="number" value={heliParams.innerWidth} onChange={e => { setHeliParams({...heliParams, innerWidth: +e.target.value}); setHeliPreset("custom"); }} />
-                        </div>
-                        <div style={{flex:1}}>
-                            <label style={{...labelStyle, fontSize: "10px", fontWeight: "normal"}}>Length (m)</label>
-                            <input style={inputStyle} type="number" value={heliParams.length} onChange={e => { setHeliParams({...heliParams, length: +e.target.value}); setHeliPreset("custom"); }} />
-                        </div>
+                    {/* --- MULTI-SECTION BUILDER --- */}
+                    <label style={{...labelStyle, marginTop: "10px", color: "#27ae60"}}>Approach Surface (Inbound)</label>
+                    <div style={{ display: "flex", gap: "5px", fontSize: "10px", fontWeight: "bold" }}>
+                        <span style={{flex:1}}>Section</span><span style={{flex:1}}>Length (m)</span><span style={{flex:1}}>Slope (%)</span><span style={{flex:1}}>Div (%)</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "5px" }}>
+                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>1 (Inner)</span>
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS1Len} onChange={e => { setHeliParams({...heliParams, appS1Len: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS1Slope} onChange={e => { setHeliParams({...heliParams, appS1Slope: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS1Div} onChange={e => { setHeliParams({...heliParams, appS1Div: +e.target.value}); setHeliPreset("custom"); }} />
+                    </div>
+                    <div style={{ display: "flex", gap: "5px", marginTop: "3px" }}>
+                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>2 (Outer)</span>
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS2Len} onChange={e => { setHeliParams({...heliParams, appS2Len: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS2Slope} onChange={e => { setHeliParams({...heliParams, appS2Slope: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS2Div} onChange={e => { setHeliParams({...heliParams, appS2Div: +e.target.value}); setHeliPreset("custom"); }} />
                     </div>
 
-                    <label style={labelStyle}>Gradients</label>
-                    <div style={rowStyle}>
-                        <div style={{flex:1}}>
-                            <label style={{...labelStyle, fontSize: "10px", fontWeight: "normal"}}>Slope (%)</label>
-                            <input style={inputStyle} type="number" step="0.1" value={heliParams.slopePct} onChange={e => { setHeliParams({...heliParams, slopePct: +e.target.value}); setHeliPreset("custom"); }} />
-                        </div>
-                        <div style={{flex:1}}>
-                            <label style={{...labelStyle, fontSize: "10px", fontWeight: "normal"}}>Divergence (%)</label>
-                            <input style={inputStyle} type="number" step="0.1" value={heliParams.divergencePct} onChange={e => { setHeliParams({...heliParams, divergencePct: +e.target.value}); setHeliPreset("custom"); }} />
-                        </div>
+                    <label style={{...labelStyle, marginTop: "10px", color: "#c0392b"}}>Take-off Climb Surface (Outbound)</label>
+                    <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
+                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>1 (Inner)</span>
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS1Len} onChange={e => { setHeliParams({...heliParams, tkofS1Len: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS1Slope} onChange={e => { setHeliParams({...heliParams, tkofS1Slope: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS1Div} onChange={e => { setHeliParams({...heliParams, tkofS1Div: +e.target.value}); setHeliPreset("custom"); }} />
                     </div>
+                    <div style={{ display: "flex", gap: "5px", marginTop: "3px" }}>
+                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>2 (Outer)</span>
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS2Len} onChange={e => { setHeliParams({...heliParams, tkofS2Len: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS2Slope} onChange={e => { setHeliParams({...heliParams, tkofS2Slope: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS2Div} onChange={e => { setHeliParams({...heliParams, tkofS2Div: +e.target.value}); setHeliPreset("custom"); }} />
+                    </div>
+
                   </div>
                 )}
                 
