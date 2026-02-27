@@ -176,7 +176,7 @@ export default function Home() {
   const [navCoord, setNavCoord] = useState({ lat: 51.47, lon: -0.45, alt: 25 });
   const [navBearing, setNavBearing] = useState(90);
   const [navThr, setNavThr] = useState({ lat: 51.47, lon: -0.42, alt: 25 });
-  const isDirectional = ["ILS_LLZ", "ILS_GP", "MLS"].includes(navType);
+  const isDirectional = ["ILS_LLZ_SF", "ILS_LLZ_DF", "ILS_GP", "MLS_AZ", "MLS_EL", "DME_DIR"].includes(navType);
 
   // Define State
   const [surfName, setSurfName] = useState("");
@@ -1739,9 +1739,12 @@ const handleDownloadLogs = async () => {
                         <option value="NDB">NDB</option>
                       </optgroup>
                       <optgroup label="Directional">
-                        <option value="ILS_LLZ">ILS Localizer (LLZ)</option>
+                        <option value="ILS_LLZ_SF">ILS LLZ (Single Frequency)</option>
+                        <option value="ILS_LLZ_DF">ILS LLZ (Dual Frequency)</option>
                         <option value="ILS_GP">ILS Glide Path (GP)</option>
-                        <option value="MLS">MLS</option>
+                        <option value="MLS_AZ">MLS Azimuth</option>
+                        <option value="MLS_EL">MLS Elevation</option>
+                        <option value="DME_DIR">DME (Directional)</option>
                       </optgroup>
                     </select>
 
