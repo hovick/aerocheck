@@ -30,6 +30,10 @@ export default function Home() {
   const [rulerPts, setRulerPts] = useState<Cesium.Cartesian3[]>([]);
   const [measureResult, setMeasureResult] = useState<{ m: number, nm: number } | null>(null);
   const [pointResult, setPointResult] = useState<{ lat: number, lon: number, alt: number } | null>(null);
+  // Dashboard Management State
+  const [manageAptSelect, setManageAptSelect] = useState("");
+  const [manageAptName, setManageAptName] = useState("");
+  const [manageAptPublic, setManageAptPublic] = useState(true);
 
   // Ref to store tool entities so we can clean them up easily
   const toolsDataSourceRef = useRef<Cesium.CustomDataSource | null>(null);
@@ -742,24 +746,44 @@ export default function Home() {
         if (surface.geometry) {
             surface.geometry.forEach((geo: any) => {
                 
-                const adjustedCoords = [...geo.coords];
-                for (let i = 2; i < adjustedCoords.length; i += 3) {
-                    adjustedCoords[i] = (adjustedCoords[i] + appliedOffset) * exaggeration;
-                }
-
-                const entity = viewerRef.current?.entities.add({
-                    name: geo.name,
-                    polygon: {
-                        hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(adjustedCoords), 
-                        perPositionHeight: true, 
-                        material: isGenericMode 
-                          ? genericColor
-                          : Cesium.Color.fromCssColorString(geo.color).withAlpha(0.4),
-                        outline: true,
-                        outlineColor: Cesium.Color.BLACK
+                // --- THE FIX: Support grouped Quad-Lists (e.g., Conical) ---
+                if (geo.quads) {
+                    geo.quads.forEach((quadCoords: number[]) => {
+                        const adjustedCoords = [...quadCoords];
+                        for (let i = 2; i < adjustedCoords.length; i += 3) {
+                            adjustedCoords[i] = (adjustedCoords[i] + appliedOffset) * exaggeration;
+                        }
+                        const entity = viewerRef.current?.entities.add({
+                            name: geo.name, // They all share the same name!
+                            polygon: {
+                                hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(adjustedCoords), 
+                                perPositionHeight: true, 
+                                material: isGenericMode ? genericColor : Cesium.Color.fromCssColorString(geo.color).withAlpha(0.4),
+                                outline: true,
+                                outlineColor: Cesium.Color.BLACK
+                            }
+                        });
+                        if (entity) entitiesToAdd.push(entity);
+                    });
+                } 
+                // --- Standard Single-Polygon Processing ---
+                else if (geo.coords) {
+                    const adjustedCoords = [...geo.coords];
+                    for (let i = 2; i < adjustedCoords.length; i += 3) {
+                        adjustedCoords[i] = (adjustedCoords[i] + appliedOffset) * exaggeration;
                     }
-                });
-                if (entity) entitiesToAdd.push(entity);
+                    const entity = viewerRef.current?.entities.add({
+                        name: geo.name,
+                        polygon: {
+                            hierarchy: Cesium.Cartesian3.fromDegreesArrayHeights(adjustedCoords), 
+                            perPositionHeight: true, 
+                            material: isGenericMode ? genericColor : Cesium.Color.fromCssColorString(geo.color).withAlpha(0.4),
+                            outline: true,
+                            outlineColor: Cesium.Color.BLACK
+                        }
+                    });
+                    if (entity) entitiesToAdd.push(entity);
+                }
             });
         }
     });
@@ -2131,6 +2155,77 @@ const handleDownloadLogs = async () => {
                     Storage: {uniqueAirportsCount} / {maxAirports} Airports
                   </span>
                 </div>
+
+                {/* --- PREMIUM: MANAGE AIRPORT SETTINGS --- */}
+                {user?.is_premium && uniqueAirportsCount > 0 && (
+                  <div style={{ backgroundColor: "#e8f0fe", padding: "10px", borderRadius: "4px", marginBottom: "15px", border: "1px solid #cce5ff" }}>
+                    <label style={{...labelStyle, margin: 0, color: "#0b1b3d", display: "block", marginBottom: "5px"}}>
+                      ⚙️ Manage Airport Settings
+                    </label>
+                    <select 
+                      style={inputStyle} 
+                      value={manageAptSelect} 
+                      onChange={e => {
+                        const apt = e.target.value;
+                        setManageAptSelect(apt);
+                        setManageAptName(apt);
+                        // Find if this airport is currently public
+                        const surf = savedSurfaces.find(s => s.airport_name === apt);
+                        setManageAptPublic(surf?.is_public ?? true);
+                      }}
+                    >
+                      <option value="">Select an airport to edit...</option>
+                      {Array.from(new Set(savedSurfaces.map(s => s.airport_name))).map(a => (
+                        <option key={a} value={a}>{a}</option>
+                      ))}
+                    </select>
+
+                    {manageAptSelect && (
+                      <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <input 
+                          style={inputStyle} 
+                          value={manageAptName} 
+                          onChange={e => setManageAptName(e.target.value)} 
+                          placeholder="New Airport Name" 
+                        />
+                        <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "5px" }}>
+                          <input 
+                            type="checkbox" 
+                            checked={manageAptPublic} 
+                            onChange={e => setManageAptPublic(e.target.checked)} 
+                          />
+                          Public (Visible in CAA Verified Search)
+                        </label>
+                        <button 
+                          style={{ ...activeTabBtn, backgroundColor: "#0b1b3d", padding: "6px 12px", fontSize: "12px" }}
+                          onClick={async () => {
+                            if (!manageAptName) return alert("Name cannot be empty.");
+                            const res = await fetch(`${API_BASE}/airports/${encodeURIComponent(manageAptSelect)}`, {
+                              method: "PUT",
+                              headers: getAuthHeaders(),
+                              body: JSON.stringify({ new_name: manageAptName, is_public: manageAptPublic })
+                            });
+                            if (res.ok) {
+                              alert("Airport updated successfully!");
+                              // Instantly update the local UI state without needing to refresh
+                              setSavedSurfaces(prev => prev.map(s => 
+                                s.airport_name === manageAptSelect 
+                                  ? { ...s, airport_name: manageAptName, is_public: manageAptPublic } 
+                                  : s
+                              ));
+                              setManageAptSelect(manageAptName); // Update dropdown reference
+                            } else {
+                              const err = await res.json();
+                              alert(`Error: ${err.detail || "Failed to update"}`);
+                            }
+                          }}
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {!user ? (
                   <p style={{ fontSize: "12px", color: "#dc3545", backgroundColor: "#f8d7da", padding: "10px", borderRadius: "4px" }}>
