@@ -593,11 +593,15 @@ export default function Home() {
 
     setIsAnalyzingBatch(true); // --- START LOADING ---
     try {
-      // THE FIX: Use backticks instead of quotes for API_BASE!
       const res = await fetch(`${API_BASE}/analyze-batch`, {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify({ surface_id: selectedAnalysisAirport, obstacles: obsList }),
+        // THE FIX: Send the keys that match our new Pydantic Model!
+        body: JSON.stringify({ 
+            airport_name: selectedAnalysisAirport, 
+            owner_id: selectedAnalysisOwner, 
+            obstacles: obsList 
+        }),
       });
       
       const data = await res.json();
