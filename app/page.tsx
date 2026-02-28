@@ -232,6 +232,7 @@ export default function Home() {
   const [selectedAnalysisOwner, setSelectedAnalysisOwner] = useState<number>(0);
   const [obsPos, setObsPos] = useState({ lat: 51.475, lon: -0.44, alt: 50 });
   const [customPoints, setCustomPoints] = useState(""); // Stores "lat,lon,alt" string
+  const [isAnalyzingBatch, setIsAnalyzingBatch] = useState(false);
 
   const getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem("aero_token");
@@ -561,6 +562,19 @@ export default function Home() {
     }
   };
 
+  // --- BATCH FILE UPLOAD HELPER ---
+  const handleBatchFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const text = event.target?.result as string;
+        setBatchInput(text); // Automatically dumps file content into the textarea
+    };
+    reader.readAsText(file);
+  };
+
+  // --- BATCH ANALYSIS LOGIC ---
   // --- BATCH ANALYSIS LOGIC ---
   const handleBatchAnalyze = async () => {
     if (!selectedAnalysisAirport) return alert("Please select a target airport first!");
@@ -577,50 +591,56 @@ export default function Home() {
 
     if (obsList.length === 0) return alert("No valid obstacles found. Use ID, Lat, Lon, Alt format.");
 
-    const res = await fetch("${API_BASE}/analyze-batch", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ surface_id: selectedAnalysisAirport, obstacles: obsList }),
-    });
-    
-    const data = await res.json();
-    if (data.error) return alert(data.error);
-
-    setBatchResults(data.results);
-
-    // --- DRAW RESULTS ON MAP ---
-    if (viewerRef.current) {
-      // Clean up previous batch markers
-      const entitiesToRemove: Cesium.Entity[] = [];
-      viewerRef.current.entities.values.forEach(e => {
-        if (e.id && e.id.toString().startsWith('batch-obs-')) entitiesToRemove.push(e);
+    setIsAnalyzingBatch(true); // --- START LOADING ---
+    try {
+      // THE FIX: Use backticks instead of quotes for API_BASE!
+      const res = await fetch(`${API_BASE}/analyze-batch`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ surface_id: selectedAnalysisAirport, obstacles: obsList }),
       });
-      entitiesToRemove.forEach(e => viewerRef.current?.entities.remove(e));
+      
+      const data = await res.json();
+      if (data.error) return alert(data.error);
 
-      // Draw new markers
-      data.results.forEach((res: any) => {
-        const isPenetrating = res.penetration;
-        const color = isPenetrating ? Cesium.Color.RED : Cesium.Color.LIGHTSKYBLUE;
-        
-        viewerRef.current?.entities.add({
-          id: `batch-obs-${res.id}`,
-          position: Cesium.Cartesian3.fromDegrees(res.lon, res.lat, res.alt),
-          point: { pixelSize: 12, color: color, outlineColor: Cesium.Color.WHITE, outlineWidth: 2 },
-          label: { 
-            text: `${res.id}\n${isPenetrating ? '❌' : '✅'}`, 
-            font: "10pt sans-serif", 
-            style: Cesium.LabelStyle.FILL_AND_OUTLINE, 
-            outlineWidth: 2, 
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM, 
-            pixelOffset: new Cesium.Cartesian2(0, -10) 
-          },
-          polyline: { // Draws a vertical line from the ground to the obstacle
-            positions: Cesium.Cartesian3.fromDegreesArrayHeights([res.lon, res.lat, 0, res.lon, res.lat, res.alt]),
-            width: 2,
-            material: color.withAlpha(0.6)
-          }
+      setBatchResults(data.results);
+
+      // --- DRAW RESULTS ON MAP ---
+      if (viewerRef.current) {
+        const entitiesToRemove: Cesium.Entity[] = [];
+        viewerRef.current.entities.values.forEach(e => {
+          if (e.id && e.id.toString().startsWith('batch-obs-')) entitiesToRemove.push(e);
         });
-      });
+        entitiesToRemove.forEach(e => viewerRef.current?.entities.remove(e));
+
+        data.results.forEach((res: any) => {
+          const isPenetrating = res.penetration;
+          const color = isPenetrating ? Cesium.Color.RED : Cesium.Color.LIGHTSKYBLUE;
+          
+          viewerRef.current?.entities.add({
+            id: `batch-obs-${res.id}`,
+            position: Cesium.Cartesian3.fromDegrees(res.lon, res.lat, res.alt),
+            point: { pixelSize: 12, color: color, outlineColor: Cesium.Color.WHITE, outlineWidth: 2 },
+            label: { 
+              text: `${res.id}\n${isPenetrating ? '❌' : '✅'}`, 
+              font: "10pt sans-serif", 
+              style: Cesium.LabelStyle.FILL_AND_OUTLINE, 
+              outlineWidth: 2, 
+              verticalOrigin: Cesium.VerticalOrigin.BOTTOM, 
+              pixelOffset: new Cesium.Cartesian2(0, -10) 
+            },
+            polyline: { 
+              positions: Cesium.Cartesian3.fromDegreesArrayHeights([res.lon, res.lat, 0, res.lon, res.lat, res.alt]),
+              width: 2,
+              material: color.withAlpha(0.6)
+            }
+          });
+        });
+      }
+    } catch (err) {
+      alert("Network error processing batch.");
+    } finally {
+      setIsAnalyzingBatch(false); // --- STOP LOADING ---
     }
   };
 
@@ -2067,9 +2087,29 @@ const handleDownloadLogs = async () => {
 
                 {/* --- PREMIUM: BATCH OBSTACLE UPLOAD --- */}
                 <div style={{ backgroundColor: "#e8f0fe", padding: "10px", borderRadius: "4px", marginTop: "15px", border: "1px solid #cce5ff", opacity: user?.is_premium ? 1 : 0.6 }}>
-                  <label style={{...labelStyle, color: "#0b1b3d", display: "block", marginBottom: "8px"}}>
-                    ★ Premium Feature: Batch Obstacle Analysis (1000 max)
-                  </label>
+                  
+                  {/* TITLE & FILE UPLOAD ROW */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <label style={{...labelStyle, color: "#0b1b3d", margin: 0, display: "flex", alignItems: "center"}}>
+                        ★ Batch Upload
+                        {/* Tooltip Icon */}
+                        <span 
+                            title="Accepted Format: ID, Lat, Lon, Alt (comma-separated).&#10;Example: Crane_1, 51.47, -0.45, 120" 
+                            style={{ cursor: "help", marginLeft: "8px", backgroundColor: "#0b1b3d", color: "white", borderRadius: "50%", width: "16px", height: "16px", display: "inline-flex", justifyContent: "center", alignItems: "center", fontSize: "11px", fontWeight: "bold" }}
+                        >
+                            ?
+                        </span>
+                      </label>
+                      
+                      {/* FILE UPLOAD BUTTON */}
+                      <input
+                          type="file"
+                          accept=".csv,.txt"
+                          onChange={handleBatchFileUpload}
+                          disabled={!user?.is_premium}
+                          style={{ fontSize: "11px", maxWidth: "160px" }}
+                      />
+                  </div>
                   
                   <textarea 
                     style={{ ...inputStyle, height: "100px", fontFamily: "monospace", fontSize: "12px" }} 
@@ -2081,11 +2121,11 @@ const handleDownloadLogs = async () => {
                   
                   <div style={{ ...rowStyle, marginTop: "10px" }}>
                     <button 
-                      style={{ ...activeTabBtn, backgroundColor: user?.is_premium ? "#0b1b3d" : "#ccc", fontSize: "12px" }}
-                      disabled={!user?.is_premium}
+                      style={{ ...activeTabBtn, backgroundColor: user?.is_premium ? "#0b1b3d" : "#ccc", fontSize: "12px", opacity: isAnalyzingBatch ? 0.7 : 1 }}
+                      disabled={!user?.is_premium || isAnalyzingBatch}
                       onClick={handleBatchAnalyze}
                     >
-                      Run Batch Analysis
+                      {isAnalyzingBatch ? "⏳ Processing..." : "Run Batch Analysis"}
                     </button>
                     
                     <button 
