@@ -672,6 +672,82 @@ export default function Home() {
     document.body.removeChild(link);
   };
 
+  const generateBatchPDF = () => {
+    if (!batchResults || batchResults.length === 0) return;
+    
+    const doc = new jsPDF();
+    const date = new Date().toLocaleString();
+
+    // --- 1. REPORT HEADER ---
+    doc.setFontSize(16);
+    doc.setTextColor(0, 51, 102); // Navy Blue
+    doc.text("BATCH OBSTACLE EVALUATION REPORT", 105, 20, { align: "center" });
+    
+    doc.setLineWidth(0.5);
+    doc.line(14, 25, 196, 25);
+
+    // Calculate Summary Stats
+    const totalCount = batchResults.length;
+    const penetrationsCount = batchResults.filter(r => r.penetration).length;
+
+    // --- 2. METADATA SECTION ---
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Date of Analysis: ${date}`, 14, 35);
+    doc.text(`Evaluated Airspace: ${selectedAnalysisAirport}`, 14, 42);
+    doc.text(`Total Obstacles Evaluated: ${totalCount}`, 14, 49);
+    
+    if (penetrationsCount > 0) {
+        doc.setTextColor(200, 0, 0); // Red
+        doc.text(`Total Violations Detected: ${penetrationsCount}`, 14, 56);
+    } else {
+        doc.setTextColor(0, 150, 0); // Green
+        doc.text(`Total Violations Detected: 0 (All Clear)`, 14, 56);
+    }
+
+    // --- 3. AUTO-TABLE (Handles multi-page breaks automatically!) ---
+    autoTable(doc, {
+      startY: 65,
+      headStyles: { fillColor: [0, 51, 102], fontSize: 9 },
+      bodyStyles: { fontSize: 8 },
+      head: [['ID', 'Lat', 'Lon', 'Prop. Height', 'Limiting Surface', 'Max Allowed', 'Margin', 'Violation']],
+      body: batchResults.map((r: any) => [
+        r.id,
+        parseFloat(r.lat).toFixed(5),
+        parseFloat(r.lon).toFixed(5),
+        `${parseFloat(r.alt).toFixed(2)} m`,
+        r.limiting_surface || "None",
+        r.allowed_alt !== null ? `${parseFloat(r.allowed_alt).toFixed(2)} m` : "N/A",
+        r.margin !== null ? `${parseFloat(r.margin).toFixed(2)} m` : "N/A",
+        r.penetration ? "YES" : "NO"
+      ]),
+      // Color-code the "YES" / "NO" column
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.column.index === 7) {
+          if (data.cell.raw === "YES") {
+            data.cell.styles.textColor = [200, 0, 0];
+            data.cell.styles.fontStyle = 'bold';
+          } else {
+            data.cell.styles.textColor = [0, 150, 0];
+          }
+        }
+      }
+    });
+
+    // --- 4. FOOTER DISCLAIMER ---
+    const pageCount = doc.getNumberOfPages();
+    for(let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Page ${i} of ${pageCount} - Automated analysis report. Verify with local Civil Aviation Authorities.`, 105, pageHeight - 10, { align: "center" });
+    }
+
+    // --- 5. TRIGGER DOWNLOAD ---
+    doc.save(`AeroCheck_Batch_Report_${selectedAnalysisAirport.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+  };
+
   // --- DATABASE SEARCH LOGIC ---
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -2138,6 +2214,15 @@ const handleDownloadLogs = async () => {
                       onClick={downloadBatchCSV}
                     >
                       Download Results (.CSV)
+                    </button>
+
+                    {/* --- NEW: PDF REPORT EXPORT --- */}
+                    <button 
+                      style={{ ...activeTabBtn, backgroundColor: user?.is_premium && batchResults.length > 0 ? "#8b0000" : "#ccc", fontSize: "12px" }}
+                      disabled={!user?.is_premium || batchResults.length === 0}
+                      onClick={generateBatchPDF}
+                    >
+                      📄 Official Results PDF
                     </button>
                   </div>
 
