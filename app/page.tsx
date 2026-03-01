@@ -84,6 +84,33 @@ export default function Home() {
   // Map Controls State
   const [exaggeration, setExaggeration] = useState(1);
   const [geoidOffset, setGeoidOffset] = useState(0);
+  // --- HELPER: Pick Coordinates from Map ---
+  const getCenterFromMap = (setter: React.Dispatch<React.SetStateAction<any>>, currentVal: any) => {
+    if (!viewerRef.current) return;
+    
+    // Temporarily change cursor to crosshair
+    viewerRef.current.canvas.style.cursor = "crosshair";
+    
+    const handler = new Cesium.ScreenSpaceEventHandler(viewerRef.current.scene.canvas);
+    handler.setInputAction((click: any) => {
+      const ray = viewerRef.current?.camera.getPickRay(click.position);
+      if (!ray) return;
+      
+      const cartesian = viewerRef.current?.scene.globe.pick(ray, viewerRef.current.scene);
+      if (cartesian) {
+        const carto = Cesium.Cartographic.fromCartesian(cartesian);
+        const lat = parseFloat(Cesium.Math.toDegrees(carto.latitude).toFixed(6));
+        const lon = parseFloat(Cesium.Math.toDegrees(carto.longitude).toFixed(6));
+        
+        // Use geoid offset if available, otherwise just use 0 or current altitude
+        setter({ ...currentVal, lat, lon });
+        
+        // Clean up and reset cursor
+        viewerRef.current!.canvas.style.cursor = "default";
+        handler.destroy(); 
+      }
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+  };
   // --- HELPER: Auto-fetch Geoid Offset ---
   const autoFetchGeoidOffset = async (lat: number, lon: number) => {
     try {
@@ -770,34 +797,57 @@ export default function Home() {
     setIsSearching(false);
   };
 
-  const handleSelectRunway = async (airport: any, runway: any) => {
+  const handleSelectRunway = async (airport: any, runway?: any) => {
     // OurAirports uses feet. We MUST convert to meters (1 ft = 0.3048 m)
     const ftToM = 0.3048;
     const arpAltM = (Number(airport.alt_ft) || 0) * ftToM;
+    const finalArpAlt = Number(arpAltM.toFixed(2));
     
-    setArpAlt(Number(arpAltM.toFixed(2)));
-    setSurfName(`${airport.ident} - RWY ${runway.le_ident}/${runway.he_ident}`);
+    setArpAlt(finalArpAlt);
     
-    const lat = Number(runway.le_latitude_deg);
-    const lon = Number(runway.le_longitude_deg);
+    let centerLat: number;
+    let centerLon: number;
 
-    setT1({
-      lat: lat,
-      lon: lon,
-      alt: Number(((Number(runway.le_elevation_ft) || Number(airport.alt_ft) || 0) * ftToM).toFixed(2))
-    });
-    
-    setT2({
-      lat: Number(runway.he_latitude_deg),
-      lon: Number(runway.he_longitude_deg),
-      alt: Number(((Number(runway.he_elevation_ft) || Number(airport.alt_ft) || 0) * ftToM).toFixed(2))
-    });
-    
+    // CASE 1: A specific runway is selected (Standard Aeroplane OLS/OFZ)
+    if (runway) {
+      setSurfName(`${airport.ident} - RWY ${runway.le_ident}/${runway.he_ident}`);
+      
+      centerLat = Number(runway.le_latitude_deg);
+      centerLon = Number(runway.le_longitude_deg);
+
+      setT1({
+        lat: centerLat,
+        lon: centerLon,
+        alt: Number(((Number(runway.le_elevation_ft) || Number(airport.alt_ft) || 0) * ftToM).toFixed(2))
+      });
+      
+      setT2({
+        lat: Number(runway.he_latitude_deg),
+        lon: Number(runway.he_longitude_deg),
+        alt: Number(((Number(runway.he_elevation_ft) || Number(airport.alt_ft) || 0) * ftToM).toFixed(2))
+      });
+    } 
+    // CASE 2: No runway exists (Heliports / NAVAIDs using base facility coordinates)
+    else {
+      setSurfName(`${airport.ident} - Base Facility`);
+      
+      centerLat = Number(airport.lat) || 0;
+      centerLon = Number(airport.lon) || 0;
+
+      setT1({ lat: centerLat, lon: centerLon, alt: finalArpAlt });
+      setT2({ lat: centerLat, lon: centerLon, alt: finalArpAlt });
+    }
+
+    // --- THE FIX: Sync coordinates to Heliport & NAVAID parameters using proper state names ---
+    setHeliParams(prev => ({ ...prev, lat: centerLat, lon: centerLon, alt: finalArpAlt }));
+    setNavCoord(prev => ({ ...prev, lat: centerLat, lon: centerLon, alt: finalArpAlt }));
+    setNavThr(prev => ({ ...prev, lat: centerLat, lon: centerLon, alt: finalArpAlt }));
+
     setSearchResults([]);
-    setSearchQuery("");
+    setSearchQuery(""); // Clears the search box
 
-    // --- NEW: Auto-calculate offset based on Runway Lat/Lon ---
-    await autoFetchGeoidOffset(lat, lon);
+    // Auto-calculate offset based on the resolved Lat/Lon
+    await autoFetchGeoidOffset(centerLat, centerLon);
   };
 
   const handleSelectNavaid = (navaid: any) => {
@@ -1618,20 +1668,32 @@ const handleDownloadLogs = async () => {
                           </div>
                         ))
                       ) : (
-                        // AIRPORT RESULTS
+                        // AIRPORT & HELIPORT RESULTS
                         searchResults.map((apt, idx) => (
                           <div key={idx} style={{ padding: "8px", borderBottom: "1px solid #eee", fontSize: "12px" }}>
                             <strong>{apt.ident}</strong> - {apt.name}
                             <div style={{ marginTop: "4px", display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                              {apt.runways.map((rwy: any, rIdx: number) => (
+                              
+                              {/* --- THE FIX: Conditional rendering for Heliports vs Airports --- */}
+                              {apt.runways && apt.runways.length > 0 ? (
+                                apt.runways.map((rwy: any, rIdx: number) => (
+                                  <button 
+                                    key={rIdx} 
+                                    onClick={() => handleSelectRunway(apt, rwy)}
+                                    style={{ padding: "2px 6px", fontSize: "10px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "3px", cursor: "pointer" }}
+                                  >
+                                    RWY {rwy.le_ident}/{rwy.he_ident}
+                                  </button>
+                                ))
+                              ) : (
                                 <button 
-                                  key={rIdx} 
-                                  onClick={() => handleSelectRunway(apt, rwy)}
-                                  style={{ padding: "2px 6px", fontSize: "10px", backgroundColor: "#0b1b3d", color: "white", border: "none", borderRadius: "3px", cursor: "pointer" }}
-                                >
-                                  RWY {rwy.le_ident}/{rwy.he_ident}
+                                    onClick={() => handleSelectRunway(apt)}
+                                    style={{ padding: "4px 8px", fontSize: "10px", backgroundColor: "#27ae60", color: "white", border: "none", borderRadius: "3px", cursor: "pointer" }}
+                                  >
+                                    Select Heliport Base
                                 </button>
-                              ))}
+                              )}
+
                             </div>
                           </div>
                         ))
@@ -1658,22 +1720,33 @@ const handleDownloadLogs = async () => {
                   <option value="HELIPORT">Heliport OLS (In progress)</option>
                 </select>
 
-                <label style={labelStyle}>Threshold 1 (Lat / Lon / Alt)</label>
-                <div style={rowStyle}>
-                  <input style={numInputStyle} type="number" value={t1.lat} onChange={e => setT1({...t1, lat: +e.target.value})} />
-                  <input style={numInputStyle} type="number" value={t1.lon} onChange={e => setT1({...t1, lon: +e.target.value})} />
-                  <input style={numInputStyle} type="number" value={t1.alt} onChange={e => setT1({...t1, alt: +e.target.value})} />
-                </div>
+                {/* --- ONLY SHOW T1, T2, and ARP for Aeroplane OLS and OFZ --- */}
+                {(family === "OLS" || family === "OFZ" || family === "VSS") && (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <label style={labelStyle}>Threshold 1 (Lat / Lon / Alt)</label>
+                      <button style={{...activeTabBtn, padding: "2px 6px", fontSize: "10px"}} onClick={() => getCenterFromMap(setT1, t1)}>📍 Map</button>
+                    </div>
+                    <div style={rowStyle}>
+                      <input style={numInputStyle} type="number" value={t1.lat} onChange={e => setT1({...t1, lat: +e.target.value})} />
+                      <input style={numInputStyle} type="number" value={t1.lon} onChange={e => setT1({...t1, lon: +e.target.value})} />
+                      <input style={numInputStyle} type="number" value={t1.alt} onChange={e => setT1({...t1, alt: +e.target.value})} />
+                    </div>
 
-                <label style={labelStyle}>Threshold 2 (Lat / Lon / Alt)</label>
-                <div style={rowStyle}>
-                  <input style={numInputStyle} type="number" value={t2.lat} onChange={e => setT2({...t2, lat: +e.target.value})} />
-                  <input style={numInputStyle} type="number" value={t2.lon} onChange={e => setT2({...t2, lon: +e.target.value})} />
-                  <input style={numInputStyle} type="number" value={t2.alt} onChange={e => setT2({...t2, alt: +e.target.value})} />
-                </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px" }}>
+                      <label style={labelStyle}>Threshold 2 (Lat / Lon / Alt)</label>
+                      <button style={{...activeTabBtn, padding: "2px 6px", fontSize: "10px"}} onClick={() => getCenterFromMap(setT2, t2)}>📍 Map</button>
+                    </div>
+                    <div style={rowStyle}>
+                      <input style={numInputStyle} type="number" value={t2.lat} onChange={e => setT2({...t2, lat: +e.target.value})} />
+                      <input style={numInputStyle} type="number" value={t2.lon} onChange={e => setT2({...t2, lon: +e.target.value})} />
+                      <input style={numInputStyle} type="number" value={t2.alt} onChange={e => setT2({...t2, alt: +e.target.value})} />
+                    </div>
 
-                <label style={labelStyle}>ARP Altitude (m)</label>
-                <input style={inputStyle} type="number" value={arpAlt} onChange={e => setArpAlt(+e.target.value)} />
+                    <label style={{...labelStyle, marginTop: "10px"}}>ARP Altitude (m)</label>
+                    <input style={inputStyle} type="number" value={arpAlt} onChange={e => setArpAlt(+e.target.value)} />
+                  </>
+                )}
 
                 {/* NEW RUNWAY TYPE DROPDOWN (Only show for OLS) */}
                 {(family === "OLS" || family === "OFZ") && (
