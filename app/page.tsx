@@ -130,37 +130,40 @@ export default function Home() {
   const [maptPos, setMaptPos] = useState({ lat: 10.430861, lon: -75.513378, alt: 830 });
   // Heliport Specific State
   // --- Heliport Specific State ---
-  const [heliPreset, setHeliPreset] = useState("pc2_day");
+  // --- Heliport Specific State ---
+  const [heliPreset, setHeliPreset] = useState("cat_a");
 
   const [heliParams, setHeliParams] = useState({
-    fatoType: "non_instrument", // "non_instrument", "non_precision", "precision"
+    fatoType: "non_instrument", 
     lat: 40.4168, lon: -3.7038, alt: 100,
     bearing: 45,            
     innerWidth: 30,         
     startOffset: 15,
     // Approach Sections (Length, Slope%, Div%)
-    appS1Len: 245, appS1Slope: 8.0, appS1Div: 10.0,
-    appS2Len: 830, appS2Slope: 16.0, appS2Div: 0.0, // 0 div means parallel
+    appS1Len: 3386, appS1Slope: 4.5, appS1Div: 10.0,
+    appS2Len: 0, appS2Slope: 0, appS2Div: 0.0, 
+    appS3Len: 0, appS3Slope: 0, appS3Div: 0.0, // --- NEW: Section 3 ---
     // Take-off Sections
-    tkofS1Len: 245, tkofS1Slope: 8.0, tkofS1Div: 10.0,
-    tkofS2Len: 830, tkofS2Slope: 16.0, tkofS2Div: 0.0
+    tkofS1Len: 3386, tkofS1Slope: 4.5, tkofS1Div: 10.0,
+    tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0.0,
+    tkofS3Len: 0, tkofS3Slope: 0, tkofS3Div: 0.0 // --- NEW: Section 3 ---
   });
 
   const handleHeliPresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const preset = e.target.value;
     setHeliPreset(preset);
     
-    // ICAO Annex 14 Vol II Auto-Fill Rules
-    if (preset === "pc1") {
-      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", appS1Len: 3386, appS1Slope: 4.5, appS1Div: 10, appS2Len: 0, appS2Slope: 0, appS2Div: 0, tkofS1Len: 3386, tkofS1Slope: 4.5, tkofS1Div: 10, tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0 }));
-    } else if (preset === "pc2_day") {
-      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", appS1Len: 245, appS1Slope: 8.0, appS1Div: 10, appS2Len: 830, appS2Slope: 16.0, appS2Div: 0, tkofS1Len: 245, tkofS1Slope: 8.0, tkofS1Div: 10, tkofS2Len: 830, tkofS2Slope: 16.0, tkofS2Div: 0 }));
-    } else if (preset === "pc2_night") {
-      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", appS1Len: 245, appS1Slope: 8.0, appS1Div: 15, appS2Len: 830, appS2Slope: 16.0, appS2Div: 0, tkofS1Len: 245, tkofS1Slope: 8.0, tkofS1Div: 15, tkofS2Len: 830, tkofS2Slope: 16.0, tkofS2Div: 0 }));
-    } else if (preset === "non_precision") {
-      setHeliParams(prev => ({ ...prev, fatoType: "non_precision", appS1Len: 2500, appS1Slope: 3.33, appS1Div: 16, appS2Len: 0, appS2Slope: 0, appS2Div: 0, tkofS1Len: 2500, tkofS1Slope: 3.33, tkofS1Div: 16, tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0 }));
+    // THE FIX: Accurate ICAO Annex 14 Vol II Auto-Fill Rules
+    if (preset === "cat_a") { // PC1
+      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", innerWidth: 30, startOffset: 15, appS1Len: 3386, appS1Slope: 4.5, appS1Div: 10, appS2Len: 0, appS2Slope: 0, appS2Div: 0, appS3Len: 0, appS3Slope: 0, appS3Div: 0, tkofS1Len: 3386, tkofS1Slope: 4.5, tkofS1Div: 10, tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0, tkofS3Len: 0, tkofS3Slope: 0, tkofS3Div: 0 }));
+    } else if (preset === "cat_b") { // PC3
+      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", innerWidth: 30, startOffset: 15, appS1Len: 245, appS1Slope: 8.0, appS1Div: 10, appS2Len: 830, appS2Slope: 16.0, appS2Div: 0, appS3Len: 0, appS3Slope: 0, appS3Div: 0, tkofS1Len: 245, tkofS1Slope: 8.0, tkofS1Div: 10, tkofS2Len: 830, tkofS2Slope: 16.0, tkofS2Div: 0, tkofS3Len: 0, tkofS3Slope: 0, tkofS3Div: 0 }));
+    } else if (preset === "cat_c") { // PC2
+      setHeliParams(prev => ({ ...prev, fatoType: "non_instrument", innerWidth: 30, startOffset: 15, appS1Len: 1220, appS1Slope: 12.5, appS1Div: 10, appS2Len: 0, appS2Slope: 0, appS2Div: 0, appS3Len: 0, appS3Slope: 0, appS3Div: 0, tkofS1Len: 1220, tkofS1Slope: 12.5, tkofS1Div: 10, tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0, tkofS3Len: 0, tkofS3Slope: 0, tkofS3Div: 0 }));
+    } else if (preset === "non_precision") { // Fixed Instrument Offsets & 3-Section Takeoff
+      setHeliParams(prev => ({ ...prev, fatoType: "non_precision", innerWidth: 90, startOffset: 60, appS1Len: 2500, appS1Slope: 3.33, appS1Div: 16, appS2Len: 0, appS2Slope: 0, appS2Div: 0, appS3Len: 0, appS3Slope: 0, appS3Div: 0, tkofS1Len: 2850, tkofS1Slope: 3.5, tkofS1Div: 30, tkofS2Len: 1510, tkofS2Slope: 3.5, tkofS2Div: 0, tkofS3Len: 7640, tkofS3Slope: 2.0, tkofS3Div: 0 }));
     } else if (preset === "precision") {
-      setHeliParams(prev => ({ ...prev, fatoType: "precision", appS1Len: 3000, appS1Slope: 5.24, appS1Div: 15, appS2Len: 0, appS2Slope: 0, appS2Div: 0, tkofS1Len: 3000, tkofS1Slope: 5.24, tkofS1Div: 15, tkofS2Len: 0, tkofS2Slope: 0, tkofS2Div: 0 }));
+      setHeliParams(prev => ({ ...prev, fatoType: "precision", innerWidth: 90, startOffset: 60, appS1Len: 3000, appS1Slope: 2.5, appS1Div: 25, appS2Len: 5500, appS2Slope: 3.0, appS2Div: 15, appS3Len: 0, appS3Slope: 0, appS3Div: 0, tkofS1Len: 2850, tkofS1Slope: 3.5, tkofS1Div: 30, tkofS2Len: 1510, tkofS2Slope: 3.5, tkofS2Div: 0, tkofS3Len: 7640, tkofS3Slope: 2.0, tkofS3Div: 0 }));
     }
   };
 
@@ -757,8 +760,11 @@ export default function Home() {
     }
     
     setIsSearching(true);
-    const endpoint = family === "NAVAID" ? "navaids" : "airports";
-    const res = await fetch(`${API_BASE}/search/${endpoint}?q=${query}`);
+    let url = `${API_BASE}/search/airports?q=${query}`;
+    if (family === "NAVAID") url = `${API_BASE}/search/navaids?q=${query}`;
+    if (family === "HELIPORT") url = `${API_BASE}/search/airports?q=${query}&is_heliport=true`; // THE FIX
+    
+    const res = await fetch(url);
     const data = await res.json();
     setSearchResults(data);
     setIsSearching(false);
@@ -1230,11 +1236,13 @@ const handleDownloadLogs = async () => {
             inner_width: heliParams.innerWidth, start_offset: heliParams.startOffset, 
             approach_sections: [
                 { length: heliParams.appS1Len, slope_pct: heliParams.appS1Slope, divergence_pct: heliParams.appS1Div },
-                { length: heliParams.appS2Len, slope_pct: heliParams.appS2Slope, divergence_pct: heliParams.appS2Div }
-            ].filter(s => s.length > 0), // Ignore empty sections
+                { length: heliParams.appS2Len, slope_pct: heliParams.appS2Slope, divergence_pct: heliParams.appS2Div },
+                { length: heliParams.appS3Len, slope_pct: heliParams.appS3Slope, divergence_pct: heliParams.appS3Div }
+            ].filter(s => s.length > 0),
             takeoff_sections: [
                 { length: heliParams.tkofS1Len, slope_pct: heliParams.tkofS1Slope, divergence_pct: heliParams.tkofS1Div },
-                { length: heliParams.tkofS2Len, slope_pct: heliParams.tkofS2Slope, divergence_pct: heliParams.tkofS2Div }
+                { length: heliParams.tkofS2Len, slope_pct: heliParams.tkofS2Slope, divergence_pct: heliParams.tkofS2Div },
+                { length: heliParams.tkofS3Len, slope_pct: heliParams.tkofS3Slope, divergence_pct: heliParams.tkofS3Div }
             ].filter(s => s.length > 0)
         } : null
     };
@@ -1679,7 +1687,6 @@ const handleDownloadLogs = async () => {
                   </>
                 )}
                 {/* DYNAMIC HELIPORT FIELDS */}
-                {/* DYNAMIC HELIPORT FIELDS */}
                 {family === "HELIPORT" && (
                   <div style={{ backgroundColor: "#e9ecef", padding: "10px", borderRadius: "4px", display: "flex", flexDirection: "column", gap: "8px" }}>
                     
@@ -1697,11 +1704,11 @@ const handleDownloadLogs = async () => {
                             <label style={{...labelStyle, color: "#d35400"}}>Annex 14 Presets</label>
                             <select style={inputStyle} value={heliPreset} onChange={handleHeliPresetChange}>
                                 <option value="custom">Custom Parameters</option>
-                                <option value="pc1">Perf. Class 1 (Non-Inst)</option>
-                                <option value="pc2_day">Perf. Class 2/3 Day (Non-Inst)</option>
-                                <option value="pc2_night">Perf. Class 2/3 Night (Non-Inst)</option>
-                                <option value="non_precision">Non-Precision Default</option>
-                                <option value="precision">Precision Default</option>
+                                <option value="cat_a">Slope Category A (PC1)</option>
+                                <option value="cat_b">Slope Category B (PC3)</option>
+                                <option value="cat_c">Slope Category C (PC2)</option>
+                                <option value="non_precision">Instrument Non-Precision</option>
+                                <option value="precision">Instrument Precision</option>
                             </select>
                         </div>
                     </div>
@@ -1724,6 +1731,10 @@ const handleDownloadLogs = async () => {
                             <label style={labelStyle}>Safety Area Width (m)</label>
                             <input style={inputStyle} type="number" value={heliParams.innerWidth} onChange={e => setHeliParams({...heliParams, innerWidth: +e.target.value})} />
                         </div>
+                        <div style={{flex:1}}>
+                            <label style={labelStyle}>Start Offset (m)</label>
+                            <input style={inputStyle} type="number" value={heliParams.startOffset} onChange={e => setHeliParams({...heliParams, startOffset: +e.target.value})} />
+                        </div>
                     </div>
 
                     {/* --- MULTI-SECTION BUILDER --- */}
@@ -1738,10 +1749,16 @@ const handleDownloadLogs = async () => {
                         <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS1Div} onChange={e => { setHeliParams({...heliParams, appS1Div: +e.target.value}); setHeliPreset("custom"); }} />
                     </div>
                     <div style={{ display: "flex", gap: "5px", marginTop: "3px" }}>
-                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>2 (Outer)</span>
+                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>2 (Mid)</span>
                         <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS2Len} onChange={e => { setHeliParams({...heliParams, appS2Len: +e.target.value}); setHeliPreset("custom"); }} />
                         <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS2Slope} onChange={e => { setHeliParams({...heliParams, appS2Slope: +e.target.value}); setHeliPreset("custom"); }} />
                         <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS2Div} onChange={e => { setHeliParams({...heliParams, appS2Div: +e.target.value}); setHeliPreset("custom"); }} />
+                    </div>
+                    <div style={{ display: "flex", gap: "5px", marginTop: "3px" }}>
+                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>3 (Outer)</span>
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS3Len} onChange={e => { setHeliParams({...heliParams, appS3Len: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS3Slope} onChange={e => { setHeliParams({...heliParams, appS3Slope: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.appS3Div} onChange={e => { setHeliParams({...heliParams, appS3Div: +e.target.value}); setHeliPreset("custom"); }} />
                     </div>
 
                     <label style={{...labelStyle, marginTop: "10px", color: "#c0392b"}}>Take-off Climb Surface (Outbound)</label>
@@ -1752,10 +1769,16 @@ const handleDownloadLogs = async () => {
                         <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS1Div} onChange={e => { setHeliParams({...heliParams, tkofS1Div: +e.target.value}); setHeliPreset("custom"); }} />
                     </div>
                     <div style={{ display: "flex", gap: "5px", marginTop: "3px" }}>
-                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>2 (Outer)</span>
+                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>2 (Mid)</span>
                         <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS2Len} onChange={e => { setHeliParams({...heliParams, tkofS2Len: +e.target.value}); setHeliPreset("custom"); }} />
                         <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS2Slope} onChange={e => { setHeliParams({...heliParams, tkofS2Slope: +e.target.value}); setHeliPreset("custom"); }} />
                         <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS2Div} onChange={e => { setHeliParams({...heliParams, tkofS2Div: +e.target.value}); setHeliPreset("custom"); }} />
+                    </div>
+                    <div style={{ display: "flex", gap: "5px", marginTop: "3px" }}>
+                        <span style={{flex:1, fontSize:"11px", alignSelf:"center"}}>3 (Outer)</span>
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS3Len} onChange={e => { setHeliParams({...heliParams, tkofS3Len: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS3Slope} onChange={e => { setHeliParams({...heliParams, tkofS3Slope: +e.target.value}); setHeliPreset("custom"); }} />
+                        <input style={{...numInputStyle, padding:"4px"}} type="number" value={heliParams.tkofS3Div} onChange={e => { setHeliParams({...heliParams, tkofS3Div: +e.target.value}); setHeliPreset("custom"); }} />
                     </div>
 
                   </div>
